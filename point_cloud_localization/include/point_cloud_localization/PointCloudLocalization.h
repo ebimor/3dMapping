@@ -39,9 +39,10 @@
 
 #include <ros/ros.h>
 #include <geometry_utils/Transform3.h>
-
+#include <tf/transform_listener.h>
 #include <pcl_ros/point_cloud.h>
 #include <tf2_ros/transform_broadcaster.h>
+#include <Eigen/Dense>
 
 class PointCloudLocalization {
  public:
@@ -117,6 +118,8 @@ class PointCloudLocalization {
 
   // Transform broadcasting to other nodes.
   tf2_ros::TransformBroadcaster tfbr_;
+  tf::TransformListener listener;
+
 
   // Parameters for filtering and ICP.
   struct Parameters {

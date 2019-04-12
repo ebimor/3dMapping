@@ -75,6 +75,7 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
   if (!pu::Get("frame_id/base", base_frame_id_)) return false;
 
+/*
   // Load initial position.
   double init_x = 0.0, init_y = 0.0, init_z = 0.0;
   double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
@@ -92,6 +93,7 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("localization/tf_epsilon", params_.tf_epsilon)) return false;
   if (!pu::Get("localization/corr_dist", params_.corr_dist)) return false;
   if (!pu::Get("localization/iterations", params_.iterations)) return false;
+*/
 
   if (!pu::Get("localization/transform_thresholding", transform_thresholding_))
     return false;
@@ -200,8 +202,11 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
     return false;
   }
 
-  // Store time stamp.
   stamp_.fromNSec(query->header.stamp*1e3);
+
+
+/*
+  // Store time stamp.
 
   // ICP-based alignment. Generalized ICP does (roughly) plane-to-plane
   // matching, and is much more robust than standard ICP.
@@ -220,13 +225,50 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
 
   // Retrieve transformation and estimate and update.
   const Eigen::Matrix4f T = icp.getFinalTransformation();
+
   pcl::transformPointCloud(*query, *aligned_query, T);
 
-  gu::Transform3 pose_update;
-  pose_update.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
-  pose_update.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
-                                  T(1, 0), T(1, 1), T(1, 2),
-                                  T(2, 0), T(2, 1), T(2, 2));
+
+*/
+
+  tf::StampedTransform transform;
+  try
+  {
+    listener.waitForTransform(fixed_frame_id_, base_frame_id_, stamp_, ros::Duration(3.0));
+    listener.lookupTransform(fixed_frame_id_, base_frame_id_, stamp_, transform);
+  }
+  catch (tf::TransformException ex)
+  {
+    ROS_ERROR("%s", ex.what());
+    ros::Duration(1.0).sleep();
+  }
+
+  geometry_msgs::Transform geTransform;
+  geTransform.translation.x = transform.getOrigin().x();
+  geTransform.translation.y = transform.getOrigin().y();
+  geTransform.translation.z = transform.getOrigin().z();
+
+  geTransform.rotation.x = transform.getRotation().x();
+  geTransform.rotation.y = transform.getRotation().y();
+  geTransform.rotation.z = transform.getRotation().z();
+  geTransform.rotation.w = transform.getRotation().w();
+
+
+  gu::Transform3 pose_update = gr::FromROS(geTransform);
+
+  const Eigen::Matrix<double, 3, 3> R = pose_update.rotation.Eigen();
+  const Eigen::Matrix<double, 3, 1> T = pose_update.translation.Eigen();
+
+  Eigen::Matrix4d tff;
+  tff.block(0, 0, 3, 3) = R;
+  tff.block(0, 3, 3, 1) = T;
+  pcl::transformPointCloud(*query, *aligned_query, tff);
+
+  //gu::Transform3 pose_update;
+  //pose_update.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
+  //pose_update.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
+  //                                T(1, 0), T(1, 1), T(1, 2),
+  //                                T(2, 0), T(2, 1), T(2, 2));
 
   // Only update if the transform is small enough.
   if (!transform_thresholding_ ||

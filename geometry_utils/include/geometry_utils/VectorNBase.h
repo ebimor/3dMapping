@@ -6,6 +6,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/array.hpp>
 #include <Eigen/Core>
+#include <Eigen/Dense>
 #include "GeometryUtilsMath.h"
 
 namespace geometry_utils {
