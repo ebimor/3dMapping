@@ -46,8 +46,9 @@
 #include <point_cloud_mapper/PointCloudMapper.h>
 #include <pcl_ros/point_cloud.h>
 
-class BlamSlam {
- public:
+class BlamSlam
+{
+public:
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
   BlamSlam();
@@ -61,7 +62,7 @@ class BlamSlam {
   // Sensor message processing.
   void ProcessPointCloudMessage(const PointCloud::ConstPtr& msg);
 
- private:
+private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);

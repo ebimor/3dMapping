@@ -44,9 +44,8 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include <Eigen/Dense>
 
-class PointCloudLocalization
-{
-public:
+class PointCloudLocalization {
+ public:
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
   PointCloudLocalization();
@@ -81,9 +80,9 @@ public:
   // Set integrated estimate. Useful for graph SLAM whenever the pose graph is
   // updated and the map is regenerated.
   void SetIntegratedEstimate(
-    const geometry_utils::Transform3& integrated_estimate);
+      const geometry_utils::Transform3& integrated_estimate);
 
-private:
+ private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
@@ -125,8 +124,7 @@ private:
 
 
   // Parameters for filtering and ICP.
-  struct Parameters
-  {
+  struct Parameters {
     // Stop ICP if the transformation from the last iteration was this small.
     double tf_epsilon;
 

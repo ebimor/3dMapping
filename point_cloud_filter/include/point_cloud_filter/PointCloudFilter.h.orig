@@ -34,30 +34,27 @@
  * Authors: Erik Nelson            ( eanelson@eecs.berkeley.edu )
  */
 
-#ifndef POINT_CLOUD_VISUALIZER_H
-#define POINT_CLOUD_VISUALIZER_H
+#ifndef POINT_CLOUD_FILTER_H
+#define POINT_CLOUD_FILTER_H
 
 #include <ros/ros.h>
 #include <pcl_ros/point_cloud.h>
 
-class PointCloudVisualizer
-{
-public:
+class PointCloudFilter {
+ public:
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-  PointCloudVisualizer();
-  ~PointCloudVisualizer();
+  PointCloudFilter();
+  ~PointCloudFilter();
 
   // Calls LoadParameters and RegisterCallbacks. Fails on failure of either.
   bool Initialize(const ros::NodeHandle& n);
 
-  // Update the point cloud by appending an incremental point cloud.
-  bool InsertPointCloud(const PointCloud& points);
+  // Filter an incoming point cloud
+  bool Filter(const PointCloud::ConstPtr& points,
+              PointCloud::Ptr points_filtered) const;
 
-  // Publish incrementally accumulated point clouds.
-  void PublishIncrementalPointCloud();
-
-private:
+ private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
@@ -65,24 +62,39 @@ private:
   // The node's name.
   std::string name_;
 
-  // World coordinate frame for publishing the point cloud.
-  std::string fixed_frame_id_;
+  struct Parameters {
+    // Apply a voxel grid filter.
+    bool grid_filter;
 
-  // Most recent point cloud update time stamp for publishers.
-  ros::Time stamp_;
+    // Resolution of voxel grid filter.
+    double grid_res;
 
-  // Publishers.
-  ros::Publisher incremental_points_pub_;
+    // Apply a random downsampling filter.
+    bool random_filter;
 
-  // Store up incremental point clouds to be published when
-  // PublishIncrementalPointCloud() is called. This makes it so that as the map
-  // grows, we are only publishing new changes each time, making visualization
-  // constant time rather than O(n).
-  PointCloud::Ptr incremental_points_;
+    // Percentage of points to discard. Must be between 0.0 and 1.0;
+    double decimate_percentage;
 
-  // Enable or disable visualization. If this parameter is loaded as false, this
-  // class object won't do anything.
-  bool enable_visualization_;
+    // Apply a statistical outlier filter.
+    bool outlier_filter;
+
+    // Standard deviation threshold in distance to neighbors for outlier
+    // removal.
+    double outlier_std;
+
+    // Number of nearest neighbors to use for outlier filter.
+    unsigned int outlier_knn;
+
+    // Apply a radius outlier filter.
+    bool radius_filter;
+
+    // Size of the radius filter.
+    double radius;
+
+    // If this number of neighbors are not found within a radius around each
+    // point, remove that point.
+    unsigned int radius_knn;
+  } params_;
 };
 
 #endif

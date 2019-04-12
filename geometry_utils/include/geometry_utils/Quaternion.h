@@ -6,11 +6,14 @@
 #include <Eigen/Geometry>
 #include "GeometryUtilsMath.h"
 
-namespace geometry_utils {
+namespace geometry_utils
+{
 
 template <typename T>
-struct QuaternionBase : VectorNBase<T, 4> {
-  QuaternionBase() : VectorNBase<T, 4>() {
+struct QuaternionBase : VectorNBase<T, 4>
+{
+  QuaternionBase() : VectorNBase<T, 4>()
+  {
     this->data.assign(0);
     this->data[0] = 1;
   }
@@ -18,8 +21,9 @@ struct QuaternionBase : VectorNBase<T, 4> {
   QuaternionBase(T val) : VectorNBase<T, 4>(val) {}
   QuaternionBase(const QuaternionBase& in) : VectorNBase<T, 4>(in.data) {}
   QuaternionBase(const boost::array<T, 4>& in) : VectorNBase<T, 4>(in) {}
-  QuaternionBase(T (&in)[4]) : VectorNBase<T, 4>(in) {}
-  QuaternionBase(const Eigen::Quaternion<T>& in) {
+  QuaternionBase(T(&in)[4]) : VectorNBase<T, 4>(in) {}
+  QuaternionBase(const Eigen::Quaternion<T>& in)
+  {
     this->data[0] = in.w();
     this->data[1] = in.x();
     this->data[2] = in.y();
@@ -27,14 +31,16 @@ struct QuaternionBase : VectorNBase<T, 4> {
   }
   QuaternionBase(const VectorNBase<T, 4>& in) : VectorNBase<T, 4>(in) {}
 
-  QuaternionBase(T w, T x, T y, T z) {
+  QuaternionBase(T w, T x, T y, T z)
+  {
     this->data[0] = w;
     this->data[1] = x;
     this->data[2] = y;
     this->data[3] = z;
   }
 
-  inline QuaternionBase operator*(const QuaternionBase& rhs) const {
+  inline QuaternionBase operator*(const QuaternionBase& rhs) const
+  {
     T a1 = this->data[0];
     T b1 = this->data[1];
     T c1 = this->data[2];
@@ -49,28 +55,55 @@ struct QuaternionBase : VectorNBase<T, 4> {
                           -(b2 * c1) + b1 * c2 + a2 * d1 + a1 * d2);
   }
 
-  inline T& W() { return this->data[0]; }
-  inline const T& W() const { return this->data[0]; }
+  inline T& W()
+  {
+    return this->data[0];
+  }
+  inline const T& W() const
+  {
+    return this->data[0];
+  }
 
-  inline T& X() { return this->data[1]; }
-  inline const T& X() const { return this->data[1]; }
+  inline T& X()
+  {
+    return this->data[1];
+  }
+  inline const T& X() const
+  {
+    return this->data[1];
+  }
 
-  inline T& Y() { return this->data[2]; }
-  inline const T& Y() const { return this->data[2]; }
+  inline T& Y()
+  {
+    return this->data[2];
+  }
+  inline const T& Y() const
+  {
+    return this->data[2];
+  }
 
-  inline T& Z() { return this->data[3]; }
-  inline const T& Z() const { return this->data[3]; }
+  inline T& Z()
+  {
+    return this->data[3];
+  }
+  inline const T& Z() const
+  {
+    return this->data[3];
+  }
 
-  inline QuaternionBase Conj() const {
+  inline QuaternionBase Conj() const
+  {
     return QuaternionBase(this->data[0], -this->data[1], -this->data[2],
                           -this->data[3]);
   }
 
-  inline QuaternionBase Error(const QuaternionBase& q) const {
+  inline QuaternionBase Error(const QuaternionBase& q) const
+  {
     return q * (*this).Conj();
   }
 
-  inline QuaternionBase AxisAngle() const {
+  inline QuaternionBase AxisAngle() const
+  {
     QuaternionBase q((*this));
     if (q.W() > 1)
       q = q.Normalize();

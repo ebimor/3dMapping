@@ -4,27 +4,31 @@
 #include "MatrixNxNBase.h"
 #include "Vector2.h"
 
-namespace geometry_utils {
+namespace geometry_utils
+{
 
 template <typename T>
-struct Matrix2x2Base : MatrixNxNBase<T, 2> {
+struct Matrix2x2Base : MatrixNxNBase<T, 2>
+{
   Matrix2x2Base() : MatrixNxNBase<T, 2>() {}
   Matrix2x2Base(T val) : MatrixNxNBase<T, 2>(val) {}
   Matrix2x2Base(const Matrix2x2Base& in) : MatrixNxNBase<T, 2>(in.data) {}
   Matrix2x2Base(const boost::array<T, 4>& in) : MatrixNxNBase<T, 2>(in) {}
-  Matrix2x2Base(T (&in)[2 * 2]) : MatrixNxNBase<T, 2>(in) {}
+  Matrix2x2Base(T(&in)[2 * 2]) : MatrixNxNBase<T, 2>(in) {}
   Matrix2x2Base(const Eigen::Matrix<T, 2, 2>& in) : MatrixNxNBase<T, 2>(in) {}
   Matrix2x2Base(const MatrixNxNBase<T, 2>& in) : MatrixNxNBase<T, 2>(in) {}
   Matrix2x2Base(const MatrixNxMBase<T, 2, 2>& in) : MatrixNxNBase<T, 2>(in) {}
 
-  Matrix2x2Base(T R11, T R12, T R21, T R22) {
+  Matrix2x2Base(T R11, T R12, T R21, T R22)
+  {
     this->data[0] = R11;
     this->data[1] = R12;
     this->data[2] = R21;
     this->data[3] = R22;
   }
 
-  virtual inline T Det() const {
+  virtual inline T Det() const
+  {
     T a = this->data[0];
     T b = this->data[1];
     T c = this->data[2];
@@ -32,7 +36,8 @@ struct Matrix2x2Base : MatrixNxNBase<T, 2> {
     return (-(b * c) + a * d);
   }
 
-  virtual inline MatrixNxNBase<T, 2> Inv() const {
+  virtual inline MatrixNxNBase<T, 2> Inv() const
+  {
     Vector2Base<T> e(SingularValues());
 
     T emax = e(0);
@@ -41,20 +46,24 @@ struct Matrix2x2Base : MatrixNxNBase<T, 2> {
     if (emin < std::numeric_limits<T>::denorm_min())
       throw std::runtime_error("Matrix2x2Base: appears singular");
 
-    if (emax / emin > std::numeric_limits<T>::epsilon()) {
+    if (emax / emin > std::numeric_limits<T>::epsilon())
+    {
       T a = this->data[0];
       T b = this->data[1];
       T c = this->data[2];
       T d = this->data[3];
 
       T tmp[4] = {d / (-b * c + a * d), b / (b * c - a * d),
-                  c / (b * c - a * d),  a / (-b * c + a * d)};
+                  c / (b * c - a * d),  a / (-b * c + a * d)
+                 };
       return MatrixNxNBase<T, 2>(tmp);
-    } else
+    }
+    else
       throw std::runtime_error("Matrix2x2Base: appears singular");
   }
 
-  virtual inline Vector2Base<T> SingularValues() const {
+  virtual inline Vector2Base<T> SingularValues() const
+  {
     T a = this->data[0];
     T b = this->data[1];
     T c = this->data[2];
@@ -74,12 +83,14 @@ struct Matrix2x2Base : MatrixNxNBase<T, 2> {
 };
 
 inline Matrix2x2Base<float> operator*(const float& lhs,
-                                      const Matrix2x2Base<float>& rhs) {
+                                      const Matrix2x2Base<float>& rhs)
+{
   return Matrix2x2Base<float>(rhs * lhs);
 }
 
 inline Matrix2x2Base<double> operator*(const double& lhs,
-                                       const Matrix2x2Base<double>& rhs) {
+                                       const Matrix2x2Base<double>& rhs)
+{
   return Matrix2x2Base<double>(rhs * lhs);
 }
 

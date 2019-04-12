@@ -216,9 +216,9 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
   // Transform those nearest neighbors back into sensor frame to perform ICP.
   //localization_.TransformPointsToSensorFrame(*msg_neighbors, msg_neighbors.get());
 
-  // Localize to the map. Localization will output a pointcloud aligned in the
-  // sensor frame.
-  //localization_.MeasurementUpdate(msg_filtered, msg_neighbors, msg_base.get());
+   //Localize to the map. Localization will output a pointcloud aligned in the
+   //sensor frame.
+   localization_.MeasurementUpdate(msg_filtered, msg_neighbors, msg_base.get());
 
   // Check for new loop closures.
   bool new_keyframe;

@@ -67,6 +67,14 @@ bool PointCloudLocalization::Initialize(const ros::NodeHandle& n) {
     return false;
   }
 
+  return true;
+}
+
+bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
+  // Load frame ids.
+  if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
+  if (!pu::Get("frame_id/base", base_frame_id_)) return false;
+
   try
   {
     listener.waitForTransform(fixed_frame_id_, base_frame_id_, stamp_, ros::Duration(3.0));
@@ -78,13 +86,18 @@ bool PointCloudLocalization::Initialize(const ros::NodeHandle& n) {
     ros::Duration(1.0).sleep();
   }
 
-  return true;
-}
+  geometry_msgs::Transform geTransform;
+  geTransform.translation.x = prevTransform.getOrigin().x();
+  geTransform.translation.y = prevTransform.getOrigin().y();
+  geTransform.translation.z = prevTransform.getOrigin().z();
 
-bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
-  // Load frame ids.
-  if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
-  if (!pu::Get("frame_id/base", base_frame_id_)) return false;
+  geTransform.rotation.x = prevTransform.getRotation().x();
+  geTransform.rotation.y = prevTransform.getRotation().y();
+  geTransform.rotation.z = prevTransform.getRotation().z();
+  geTransform.rotation.w = prevTransform.getRotation().w();
+
+
+  gu::Transform3 pose_update = gr::FromROS(geTransform);
 
 /*
   // Load initial position.

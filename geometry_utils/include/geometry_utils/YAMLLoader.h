@@ -28,18 +28,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <yaml-cpp/yaml.h>
 #include <geometry_utils/GeometryUtils.h>
 
-namespace YAML {
+namespace YAML
+{
 
 template <>
-struct convert<geometry_utils::Vector2> {
-  static Node Encode(const geometry_utils::Vector2& rhs) {
+struct convert<geometry_utils::Vector2>
+{
+  static Node Encode(const geometry_utils::Vector2& rhs)
+  {
     Node node;
     node.push_back(rhs[0]);
     node.push_back(rhs[1]);
     return node;
   }
 
-  static bool Decode(const Node& node, geometry_utils::Vector2& rhs) {
+  static bool Decode(const Node& node, geometry_utils::Vector2& rhs)
+  {
     if (!node.IsSequence() || node.size() != 2)
       return false;
 
@@ -50,8 +54,10 @@ struct convert<geometry_utils::Vector2> {
 };
 
 template <>
-struct convert<geometry_utils::Vector3> {
-  static Node Encode(const geometry_utils::Vector3& rhs) {
+struct convert<geometry_utils::Vector3>
+{
+  static Node Encode(const geometry_utils::Vector3& rhs)
+  {
     Node node;
     node.push_back(rhs[0]);
     node.push_back(rhs[1]);
@@ -59,7 +65,8 @@ struct convert<geometry_utils::Vector3> {
     return node;
   }
 
-  static bool Decode(const Node& node, geometry_utils::Vector3& rhs) {
+  static bool Decode(const Node& node, geometry_utils::Vector3& rhs)
+  {
     if (!node.IsSequence() || node.size() != 3)
       return false;
 
@@ -71,8 +78,10 @@ struct convert<geometry_utils::Vector3> {
 };
 
 template <>
-struct convert<geometry_utils::Vector4> {
-  static Node Encode(const geometry_utils::Vector4& rhs) {
+struct convert<geometry_utils::Vector4>
+{
+  static Node Encode(const geometry_utils::Vector4& rhs)
+  {
     Node node;
     node.push_back(rhs[0]);
     node.push_back(rhs[1]);
@@ -81,7 +90,8 @@ struct convert<geometry_utils::Vector4> {
     return node;
   }
 
-  static bool Decode(const Node& node, geometry_utils::Vector4& rhs) {
+  static bool Decode(const Node& node, geometry_utils::Vector4& rhs)
+  {
     if (!node.IsSequence() || node.size() != 4)
       return false;
 

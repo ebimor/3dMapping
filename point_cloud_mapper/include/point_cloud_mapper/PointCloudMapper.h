@@ -45,8 +45,9 @@
 #include <mutex>
 #include <thread>
 
-class PointCloudMapper {
- public:
+class PointCloudMapper
+{
+public:
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
   typedef pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> Octree;
 
@@ -76,7 +77,7 @@ class PointCloudMapper {
   // from inside, as opposed to PublishMapUpdate().
   void PublishMap();
 
- private:
+private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);

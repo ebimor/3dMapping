@@ -34,55 +34,78 @@
  * Authors: Erik Nelson            ( eanelson@eecs.berkeley.edu )
  */
 
-#ifndef POINT_CLOUD_VISUALIZER_H
-#define POINT_CLOUD_VISUALIZER_H
+#ifndef BLAM_SLAM_H
+#define BLAM_SLAM_H
 
 #include <ros/ros.h>
+#include <measurement_synchronizer/MeasurementSynchronizer.h>
+#include <point_cloud_filter/PointCloudFilter.h>
+//#include <point_cloud_odometry/PointCloudOdometry.h>
+#include <laser_loop_closure/LaserLoopClosure.h>
+#include <point_cloud_localization/PointCloudLocalization.h>
+#include <point_cloud_mapper/PointCloudMapper.h>
 #include <pcl_ros/point_cloud.h>
 
-class PointCloudVisualizer
-{
-public:
+class BlamSlam {
+ public:
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-  PointCloudVisualizer();
-  ~PointCloudVisualizer();
+  BlamSlam();
+  ~BlamSlam();
 
   // Calls LoadParameters and RegisterCallbacks. Fails on failure of either.
-  bool Initialize(const ros::NodeHandle& n);
+  // The from_log argument specifies whether to run SLAM online (subscribe to
+  // topics) or by loading messages from a bag file.
+  bool Initialize(const ros::NodeHandle& n, bool from_log);
 
-  // Update the point cloud by appending an incremental point cloud.
-  bool InsertPointCloud(const PointCloud& points);
+  // Sensor message processing.
+  void ProcessPointCloudMessage(const PointCloud::ConstPtr& msg);
 
-  // Publish incrementally accumulated point clouds.
-  void PublishIncrementalPointCloud();
-
-private:
+ private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
-  bool RegisterCallbacks(const ros::NodeHandle& n);
+  bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
+  bool RegisterLogCallbacks(const ros::NodeHandle& n);
+  bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
+  bool CreatePublishers(const ros::NodeHandle& n);
+
+  // Sensor callbacks.
+  void PointCloudCallback(const PointCloud::ConstPtr& msg);
+
+  // Timer callbacks.
+  void EstimateTimerCallback(const ros::TimerEvent& ev);
+  void VisualizationTimerCallback(const ros::TimerEvent& ev);
+
+  // Loop closing. Returns true if at least one loop closure was found. Also
+  // output whether or not a new keyframe was added to the pose graph.
+  bool HandleLoopClosures(const PointCloud::ConstPtr& scan, bool* new_keyframe);
 
   // The node's name.
   std::string name_;
 
-  // World coordinate frame for publishing the point cloud.
+  // Update rates and callback timers.
+  double estimate_update_rate_;
+  double visualization_update_rate_;
+  ros::Timer estimate_update_timer_;
+  ros::Timer visualization_update_timer_;
+
+  // Subscribers.
+  ros::Subscriber pcld_sub_;
+
+  // Publishers
+  ros::Publisher base_frame_pcld_pub_;
+
+  // Names of coordinate frames.
   std::string fixed_frame_id_;
+  std::string base_frame_id_;
 
-  // Most recent point cloud update time stamp for publishers.
-  ros::Time stamp_;
-
-  // Publishers.
-  ros::Publisher incremental_points_pub_;
-
-  // Store up incremental point clouds to be published when
-  // PublishIncrementalPointCloud() is called. This makes it so that as the map
-  // grows, we are only publishing new changes each time, making visualization
-  // constant time rather than O(n).
-  PointCloud::Ptr incremental_points_;
-
-  // Enable or disable visualization. If this parameter is loaded as false, this
-  // class object won't do anything.
-  bool enable_visualization_;
+  // Class objects (BlamSlam is a composite class).
+  MeasurementSynchronizer synchronizer_;
+  PointCloudFilter filter_;
+  //PointCloudOdometry odometry_;
+  LaserLoopClosure loop_closure_;
+  PointCloudLocalization localization_;
+  PointCloudMapper mapper_;
 };
 
 #endif

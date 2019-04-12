@@ -59,42 +59,35 @@
 
 namespace pu = parameter_utils;
 
-class BlamSlamOffline
-{
-public:
+class BlamSlamOffline {
+ public:
   BlamSlamOffline() {}
   ~BlamSlamOffline() {}
 
-  bool Initialize(const ros::NodeHandle& n)
-  {
+  bool Initialize(const ros::NodeHandle& n) {
     name_ = ros::names::append(n.getNamespace(), "BlamSlamOffline");
 
-    if (!slam_.Initialize(n, true))
-    {
+    if (!slam_.Initialize(n, true)) {
       ROS_ERROR("%s: Failed to initialize BLAM SLAM.", name_.c_str());
       return false;
     }
 
-    if (!LoadParameters(n))
-    {
+    if (!LoadParameters(n)) {
       ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
       return false;
     }
 
-    if (!RegisterCallbacks(n))
-    {
+    if (!RegisterCallbacks(n)) {
       ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
       return false;
     }
 
-    if (!LoadBagfile())
-    {
+    if (!LoadBagfile()) {
       ROS_ERROR("%s: Failed to load bag file.", name_.c_str());
       return false;
     }
 
-    if (!ProcessBagfile())
-    {
+    if (!ProcessBagfile()) {
       ROS_ERROR("%s: Failed to process bag file.", name_.c_str());
       return false;
     }
@@ -102,10 +95,9 @@ public:
     return true;
   }
 
-private:
+ private:
 
-  bool RegisterCallbacks(const ros::NodeHandle& n)
-  {
+  bool RegisterCallbacks(const ros::NodeHandle& n) {
     ros::NodeHandle nl;
     const std::string ns = ros::this_node::getNamespace();
 
@@ -115,14 +107,12 @@ private:
     return true;
   }
 
-  bool LoadParameters(const ros::NodeHandle& n)
-  {
+  bool LoadParameters(const ros::NodeHandle& n) {
 
     // Check that bag file exists.
     if (!pu::Get("filename/bag", bag_filename_)) return false;
     boost::filesystem::path bag_path(bag_filename_);
-    if (!boost::filesystem::exists(bag_path))
-    {
+    if (!boost::filesystem::exists(bag_path)) {
       ROS_ERROR("%s: Bag file does not exist.", name_.c_str());
       return false;
     }
@@ -139,8 +129,7 @@ private:
     return true;
   }
 
-  bool LoadBagfile()
-  {
+  bool LoadBagfile() {
     const std::string ns = ros::this_node::getNamespace();
 
     // Allow for more topics in the future.
@@ -157,8 +146,7 @@ private:
     ros::Time unix_start_time = preview.getBeginTime();
     ros::Time unix_end_time = preview.getEndTime();
 
-    if (time_start_ > 0.0)
-    {
+    if (time_start_ > 0.0) {
       if (time_start_ < 684561600.0)
         unix_start_time += ros::Duration(time_start_);
       else
@@ -167,8 +155,7 @@ private:
     else
       unix_start_time = ros::TIME_MIN;
 
-    if (time_end_ > -1.0)
-    {
+    if (time_end_ > -1.0) {
       if (time_end_ < 684561600.0)
         unix_end_time = preview.getBeginTime() + ros::Duration(time_end_);
       else
@@ -186,18 +173,14 @@ private:
     rosbag::View view(bag, rosbag::TopicQuery(topics),
                       unix_start_time, unix_end_time);
 
-    BOOST_FOREACH(rosbag::MessageInstance const m, view)
-    {
-      if (!m.getTopic().compare(scan_topic_))
-      {
+    BOOST_FOREACH(rosbag::MessageInstance const m, view) {
+      if (!m.getTopic().compare(scan_topic_)) {
         BlamSlam::PointCloud::ConstPtr msg =
-          m.instantiate<BlamSlam::PointCloud>();
+            m.instantiate<BlamSlam::PointCloud>();
 
         if (msg != NULL)
           synchronizer_.AddPCLPointCloudMessage(msg);
-      }
-      else
-      {
+      } else  {
         ROS_ERROR("%s: Unknown topic in bagfile: %s.", name_.c_str(),
                   m.getTopic().c_str());
       }
@@ -207,8 +190,7 @@ private:
     return true;
   }
 
-  bool ProcessBagfile()
-  {
+  bool ProcessBagfile() {
     ROS_INFO("%s: Sorting messages.", name_.c_str());
     synchronizer_.SortMessages();
 
@@ -220,38 +202,33 @@ private:
     MeasurementSynchronizer::sensor_type type;
     unsigned int index = 0;
 
-    while (synchronizer_.GetNextMessage(&type, &index))
-    {
-      switch (type)
-      {
-      case MeasurementSynchronizer::PCL_POINTCLOUD:
-      {
-        const MeasurementSynchronizer::Message <
-        BlamSlam::PointCloud >::ConstPtr& m =
-          synchronizer_.GetPCLPointCloudMessage(index);
+    while (synchronizer_.GetNextMessage(&type, &index)) {
+      switch (type) {
+        case MeasurementSynchronizer::PCL_POINTCLOUD: {
+          const MeasurementSynchronizer::Message<
+              BlamSlam::PointCloud>::ConstPtr& m =
+              synchronizer_.GetPCLPointCloudMessage(index);
 
-        slam_.ProcessPointCloudMessage(m->msg);
-        scan_pub_.publish(m->msg);
+          slam_.ProcessPointCloudMessage(m->msg);
+          scan_pub_.publish(m->msg);
 
-        rosgraph_msgs::Clock clock_msg;
-        clock_msg.clock = ros::Time().fromNSec(m->msg->header.stamp * 1e3);
-        clock_pub_.publish(clock_msg);
+          rosgraph_msgs::Clock clock_msg;
+          clock_msg.clock = ros::Time().fromNSec(m->msg->header.stamp * 1e3);
+          clock_pub_.publish(clock_msg);
 
-        if (!bag_time_start_set)
-        {
-          bag_time_start = ros::Time().fromNSec(m->msg->header.stamp * 1e3);
-          bag_time_start_set = true;
+          if (!bag_time_start_set) {
+            bag_time_start = ros::Time().fromNSec(m->msg->header.stamp * 1e3);
+            bag_time_start_set = true;
+          }
+          bag_time = ros::Time().fromNSec(m->msg->header.stamp * 1e3);
+
+          break;
         }
-        bag_time = ros::Time().fromNSec(m->msg->header.stamp * 1e3);
-
-        break;
-      }
-      default:
-      {
-        ROS_WARN("%s: Unhandled measurement type: %s\n", name_.c_str(),
-                 MeasurementSynchronizer::GetTypeString(type).c_str());
-        break;
-      }
+        default: {
+          ROS_WARN("%s: Unhandled measurement type: %s\n", name_.c_str(),
+                   MeasurementSynchronizer::GetTypeString(type).c_str());
+          break;
+        }
       }
 
       // Check for kill signals.
@@ -261,11 +238,10 @@ private:
       ros::spinOnce();
 
       // Alter time scale.
-      if (time_scale_ > 0.0)
-      {
+      if (time_scale_ > 0.0) {
         ros::WallDuration dt_wall = ros::WallTime::now() - wall_time_start;
         ros::Duration dt_bag = bag_time - bag_time_start;
-        double dt_sleep = dt_bag.toSec() / time_scale_ - dt_wall.toSec();
+        double dt_sleep = dt_bag.toSec()/time_scale_ - dt_wall.toSec();
         if (dt_sleep > 0.0)
           ros::WallDuration(dt_sleep).sleep();
       }
@@ -274,7 +250,7 @@ private:
     synchronizer_.ClearMessages();
 
     const double total_wall_time =
-      (ros::WallTime::now() - wall_time_start).toSec();
+        (ros::WallTime::now() - wall_time_start).toSec();
     const double total_bag_time = (bag_time - bag_time_start).toSec();
     ROS_INFO("%s: Finished processing bag file, %lf percent of real-time.",
              name_.c_str(), (total_bag_time / total_wall_time) * 100.f);

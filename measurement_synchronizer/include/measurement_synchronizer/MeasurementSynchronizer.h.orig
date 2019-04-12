@@ -44,15 +44,13 @@
 #include <memory>
 #include <vector>
 
-class MeasurementSynchronizer
-{
-public:
+class MeasurementSynchronizer {
+ public:
   MeasurementSynchronizer();
   ~MeasurementSynchronizer();
 
   // Enums for all valid sensor message types.
-  typedef enum
-  {
+  typedef enum {
     POINTCLOUD,
     PCL_POINTCLOUD
   } sensor_type;
@@ -65,14 +63,13 @@ public:
 
   // Templated message type for holding generic sensor messages.
   template<typename T>
-  struct Message
-  {
+  struct Message {
     typename T::ConstPtr msg;
     std::string tag;
     typedef std::shared_ptr<Message<T>> Ptr;
     typedef std::shared_ptr<const Message<T>> ConstPtr;
     Message(const typename T::ConstPtr m, const std::string& t)
-      : msg(m), tag(t) {}
+        : msg(m), tag(t) {}
   };
 
   // Typedefs for queues of all sensor types.
@@ -86,7 +83,7 @@ public:
 
   // Methods for accessing a single measurement by index.
   const Message<sensor_msgs::PointCloud2>::ConstPtr& GetPointCloudMessage(
-    unsigned int index);
+      unsigned int index);
   const Message<pcl::PointCloud<pcl::PointXYZ>>::ConstPtr&
       GetPCLPointCloudMessage(unsigned int index);
 
@@ -94,39 +91,35 @@ public:
   void AddPointCloudMessage(const sensor_msgs::PointCloud2::ConstPtr& msg,
                             const std::string& tag = std::string());
   void AddPCLPointCloudMessage(
-    const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& msg,
-    const std::string& tag = std::string());
+      const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& msg,
+      const std::string& tag = std::string());
 
   // Static enum to string conversion.
-  static std::string GetTypeString(const sensor_type& type)
-  {
-    switch (type)
-    {
-    case POINTCLOUD:
-      return std::string("POINTCLOUD");
-    case PCL_POINTCLOUD:
-      return std::string("PCL_POINTCLOUD");
+  static std::string GetTypeString(const sensor_type& type) {
+    switch(type) {
+      case POINTCLOUD:
+        return std::string("POINTCLOUD");
+      case PCL_POINTCLOUD:
+        return std::string("PCL_POINTCLOUD");
       // No default to force compile-time error.
     }
   }
 
-private:
+ private:
   // Templated message for sorting generic sensor messages by timestamp.
-  struct TimestampedType
-  {
+  struct TimestampedType {
     double time;
     sensor_type type;
     unsigned int index;
     TimestampedType(double t, sensor_type s, unsigned int i)
-      : time(t), type(s), index(i) {}
+        : time(t), type(s), index(i) {}
     typedef std::shared_ptr<TimestampedType> Ptr;
     typedef std::shared_ptr<const TimestampedType> ConstPtr;
   };
 
   // Sorting function.
   static bool CompareTimestamps(const TimestampedType::ConstPtr& lhs,
-                                const TimestampedType::ConstPtr& rhs)
-  {
+                                const TimestampedType::ConstPtr& rhs) {
     return ((lhs->time < rhs->time) ||
             ((lhs->time == rhs->time) && (lhs->type < rhs->type)));
   }

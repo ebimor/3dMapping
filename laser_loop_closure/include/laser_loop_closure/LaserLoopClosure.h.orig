@@ -57,9 +57,8 @@
 #include <map>
 #include <vector>
 
-class LaserLoopClosure
-{
-public:
+class LaserLoopClosure {
+ public:
   LaserLoopClosure();
   ~LaserLoopClosure();
 
@@ -100,7 +99,7 @@ public:
   // Publish pose graph for visualization.
   void PublishPoseGraph();
 
-private:
+ private:
 
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
@@ -117,9 +116,9 @@ private:
 
   // Create prior and between factors.
   gtsam::PriorFactor<gtsam::Pose3> MakePriorFactor(
-    const gtsam::Pose3& pose, const Diagonal::shared_ptr& covariance);
+      const gtsam::Pose3& pose, const Diagonal::shared_ptr& covariance);
   gtsam::BetweenFactor<gtsam::Pose3> MakeBetweenFactor(
-    const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
+      const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
 
   // Perform ICP between two laser scans.
   bool PerformICP(const PointCloud::ConstPtr& scan1,

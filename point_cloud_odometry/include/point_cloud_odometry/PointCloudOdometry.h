@@ -43,8 +43,9 @@
 #include <pcl_ros/point_cloud.h>
 #include <tf2_ros/transform_broadcaster.h>
 
-class PointCloudOdometry {
- public:
+class PointCloudOdometry
+{
+public:
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
   PointCloudOdometry();
@@ -64,7 +65,7 @@ class PointCloudOdometry {
   // not initialized.
   bool GetLastPointCloud(PointCloud::Ptr& out) const;
 
- private:
+private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
@@ -111,7 +112,8 @@ class PointCloudOdometry {
   PointCloud::Ptr reference_;
 
   // Parameters for filtering, and ICP.
-  struct Parameters {
+  struct Parameters
+  {
     // Stop ICP if the transformation from the last iteration was this small.
     double icp_tf_epsilon;
 

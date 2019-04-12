@@ -40,8 +40,9 @@
 #include <ros/ros.h>
 #include <pcl_ros/point_cloud.h>
 
-class PointCloudFilter {
- public:
+class PointCloudFilter
+{
+public:
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
   PointCloudFilter();
@@ -54,7 +55,7 @@ class PointCloudFilter {
   bool Filter(const PointCloud::ConstPtr& points,
               PointCloud::Ptr points_filtered) const;
 
- private:
+private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
@@ -62,7 +63,8 @@ class PointCloudFilter {
   // The node's name.
   std::string name_;
 
-  struct Parameters {
+  struct Parameters
+  {
     // Apply a voxel grid filter.
     bool grid_filter;
 
