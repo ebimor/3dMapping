@@ -119,6 +119,8 @@ class PointCloudLocalization {
   // Transform broadcasting to other nodes.
   tf2_ros::TransformBroadcaster tfbr_;
   tf::TransformListener listener;
+  tf::StampedTransform prevTransform, newTransform;
+
 
 
   // Parameters for filtering and ICP.

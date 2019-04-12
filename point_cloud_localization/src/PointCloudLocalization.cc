@@ -67,6 +67,17 @@ bool PointCloudLocalization::Initialize(const ros::NodeHandle& n) {
     return false;
   }
 
+  try
+  {
+    listener.waitForTransform(fixed_frame_id_, base_frame_id_, stamp_, ros::Duration(3.0));
+    listener.lookupTransform(fixed_frame_id_, base_frame_id_, stamp_, prevTransform);
+  }
+  catch (tf::TransformException ex)
+  {
+    ROS_ERROR("%s", ex.what());
+    ros::Duration(1.0).sleep();
+  }
+
   return true;
 }
 
@@ -227,21 +238,23 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   const Eigen::Matrix4f T = icp.getFinalTransformation();
 
   pcl::transformPointCloud(*query, *aligned_query, T);
-
-
 */
 
-  tf::StampedTransform transform;
   try
   {
     listener.waitForTransform(fixed_frame_id_, base_frame_id_, stamp_, ros::Duration(3.0));
-    listener.lookupTransform(fixed_frame_id_, base_frame_id_, stamp_, transform);
+    listener.lookupTransform(fixed_frame_id_, base_frame_id_, stamp_, newTransform);
   }
   catch (tf::TransformException ex)
   {
     ROS_ERROR("%s", ex.what());
     ros::Duration(1.0).sleep();
   }
+
+  //find relative transform with respect to previous transform
+  tf::StampedTransform transform;
+  transform.mult(newTransform, prevTransform.inverse());
+  prevTransform = newTransform;
 
   geometry_msgs::Transform geTransform;
   geTransform.translation.x = transform.getOrigin().x();
