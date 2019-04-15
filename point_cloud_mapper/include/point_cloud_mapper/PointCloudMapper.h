@@ -110,6 +110,7 @@ private:
 
   // Map parameters.
   double octree_resolution_;
+  double height_of_points_;
 
   // Map publisher.
   ros::Publisher map_pub_;

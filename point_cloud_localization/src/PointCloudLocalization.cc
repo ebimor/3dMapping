@@ -272,10 +272,10 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   transform.mult(newTransform, prevTransform.inverse());
   prevTransform = newTransform;
 
-  double curr_x = transform.getOrigin().x();
-  double curr_y = transform.getOrigin().y();
+  //double curr_x = transform.getOrigin().x();
+  //double curr_y = transform.getOrigin().y();
 
-  std::cout<<"current location is: "<<curr_x<<" , "<<curr_y<<std::endl;
+  //std::cout<<"current location is: "<<curr_x<<" , "<<curr_y<<std::endl;
 
   geometry_msgs::Transform geTransform;
   geTransform.translation.x = newTransform.getOrigin().x();

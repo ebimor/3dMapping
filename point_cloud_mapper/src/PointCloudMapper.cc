@@ -77,6 +77,9 @@ bool PointCloudMapper::LoadParameters(const ros::NodeHandle& n) {
   // Load map parameters.
   if (!pu::Get("map/octree_resolution", octree_resolution_)) return false;
 
+  if (!pu::Get("map/height_of_points", height_of_points_)) return false;
+
+
   // Initialize the map octree.
   map_octree_.reset(new Octree(octree_resolution_));
   map_octree_->setInputCloud(map_data_);
@@ -117,7 +120,7 @@ bool PointCloudMapper::InsertPoints(const PointCloud::ConstPtr& points,
     ROS_ERROR("%s: Incremental point cloud argument is null.", name_.c_str());
     return false;
   }
-  
+
   incremental_points->clear();
 
   // Try to get the map mutex from the publisher. If the publisher is using it,
@@ -128,7 +131,8 @@ bool PointCloudMapper::InsertPoints(const PointCloud::ConstPtr& points,
     // if there is not already a point in the same voxel.
     for (size_t ii = 0; ii < points->points.size(); ++ii) {
       const pcl::PointXYZ p = points->points[ii];
-      if (!map_octree_->isVoxelOccupiedAtPoint(p)) {
+
+      if (!map_octree_->isVoxelOccupiedAtPoint(p) && p.z > height_of_points_) {
         map_octree_->addPointToCloud(p, map_data_);
         incremental_points->push_back(p);
       }
