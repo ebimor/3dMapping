@@ -1,4 +1,4 @@
 frame_id:
-  fixed: world
-  base: base
-  odometry: odometry
+  fixed: map
+  base: base_link
+  odometry: odom

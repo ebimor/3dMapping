@@ -13,7 +13,7 @@
       <param name="filename/bag" value="/home/eshahrivar/Desktop/slamblam.bag"/>
       <param name="scan_topic" value="/velodyne_points"/>
 
-      <param name="time_start" value="0.0"/>
+      <param name="time_start" value="10.0"/>
       <param name="time_end" value="-1.0"/>
       <param name="time_scale" value="-1.0"/>
 

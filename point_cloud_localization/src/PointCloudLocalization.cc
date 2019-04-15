@@ -77,12 +77,13 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
 
   try
   {
-    listener.waitForTransform(fixed_frame_id_, base_frame_id_, stamp_, ros::Duration(3.0));
-    listener.lookupTransform(fixed_frame_id_, base_frame_id_, stamp_, prevTransform);
+    listener.waitForTransform(fixed_frame_id_, base_frame_id_, ros::Time(0), ros::Duration(3.0));
+    listener.lookupTransform(fixed_frame_id_, base_frame_id_, ros::Time(0), prevTransform);
   }
   catch (tf::TransformException ex)
   {
     ROS_ERROR("%s", ex.what());
+    ROS_INFO("ERRORORRRRRRR");
     ros::Duration(1.0).sleep();
   }
 
@@ -97,7 +98,7 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
   geTransform.rotation.w = prevTransform.getRotation().w();
 
 
-  gu::Transform3 pose_update = gr::FromROS(geTransform);
+  integrated_estimate_ = gr::FromROS(geTransform);
 
 /*
   // Load initial position.
@@ -156,6 +157,7 @@ void PointCloudLocalization::SetIntegratedEstimate(
     const gu::Transform3& integrated_estimate) {
   integrated_estimate_ = integrated_estimate;
 
+/*
   // Publish transform between fixed frame and localization frame.
   geometry_msgs::TransformStamped tf;
   tf.transform = gr::ToRosTransform(integrated_estimate_);
@@ -163,12 +165,13 @@ void PointCloudLocalization::SetIntegratedEstimate(
   tf.header.frame_id = fixed_frame_id_;
   tf.child_frame_id = base_frame_id_;
   tfbr_.sendTransform(tf);
+  */
 }
 
 bool PointCloudLocalization::MotionUpdate(
     const gu::Transform3& incremental_odom) {
   // Store the incremental transform from odometry.
-  incremental_estimate_ = incremental_odom;
+  incremental_estimate_ = gu::Transform3::Identity(); // incremental_odom;
   return true;
 }
 
@@ -269,17 +272,24 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   transform.mult(newTransform, prevTransform.inverse());
   prevTransform = newTransform;
 
+  double curr_x = transform.getOrigin().x();
+  double curr_y = transform.getOrigin().y();
+
+  std::cout<<"current location is: "<<curr_x<<" , "<<curr_y<<std::endl;
+
   geometry_msgs::Transform geTransform;
-  geTransform.translation.x = transform.getOrigin().x();
-  geTransform.translation.y = transform.getOrigin().y();
-  geTransform.translation.z = transform.getOrigin().z();
+  geTransform.translation.x = newTransform.getOrigin().x();
+  geTransform.translation.y = newTransform.getOrigin().y();
+  geTransform.translation.z = newTransform.getOrigin().z();
 
-  geTransform.rotation.x = transform.getRotation().x();
-  geTransform.rotation.y = transform.getRotation().y();
-  geTransform.rotation.z = transform.getRotation().z();
-  geTransform.rotation.w = transform.getRotation().w();
+  geTransform.rotation.x = newTransform.getRotation().x();
+  geTransform.rotation.y = newTransform.getRotation().y();
+  geTransform.rotation.z = newTransform.getRotation().z();
+  geTransform.rotation.w = newTransform.getRotation().w();
 
+  integrated_estimate_ = gr::FromROS(geTransform);
 
+/*
   gu::Transform3 pose_update = gr::FromROS(geTransform);
 
   const Eigen::Matrix<double, 3, 3> R = pose_update.rotation.Eigen();
@@ -290,11 +300,14 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   tff.block(0, 3, 3, 1) = T;
   pcl::transformPointCloud(*query, *aligned_query, tff);
 
+
+
   //gu::Transform3 pose_update;
   //pose_update.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
   //pose_update.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
   //                                T(1, 0), T(1, 1), T(1, 2),
   //                                T(2, 0), T(2, 1), T(2, 2));
+
 
   // Only update if the transform is small enough.
   if (!transform_thresholding_ ||
@@ -320,6 +333,7 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   PublishPoints(*reference, reference_pub_);
   PublishPoints(*aligned_query, aligned_pub_);
 
+
   // Publish transform between fixed frame and localization frame.
   geometry_msgs::TransformStamped tf;
   tf.transform = gr::ToRosTransform(integrated_estimate_);
@@ -327,6 +341,7 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   tf.header.frame_id = fixed_frame_id_;
   tf.child_frame_id = base_frame_id_;
   tfbr_.sendTransform(tf);
+*/
 
   return true;
 }

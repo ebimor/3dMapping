@@ -1,6 +1,6 @@
 <launch>
   <!-- True for simulation, false for real-time and bagfiles -->
-  <param name="/use_sim_time" value="false"/>
+  <param name="/use_sim_time" value="true"/>
 
   <group ns="blam">
     <!-- SLAM -->
@@ -45,5 +45,7 @@
       <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
     </node>
   </group>
+
+  <node pkg="rosbag" type="play" name="player" output="screen" args="--clock /home/eshahrivar/Desktop/slamblam.bag"/>
 
 </launch>

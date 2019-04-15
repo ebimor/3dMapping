@@ -49,3 +49,10 @@ target_link_libraries(${PROJECT_NAME}_node
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
 )
+
+
+add_executable(tfTest_node src/testTf.cc)
+target_link_libraries(tfTest_node
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+)

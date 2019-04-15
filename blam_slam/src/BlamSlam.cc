@@ -188,6 +188,7 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
   PointCloud::Ptr msg_filtered(new PointCloud);
   filter_.Filter(msg, msg_filtered);
 
+
 /*
   // Update odometry by performing ICP.
   if (!odometry_.UpdateEstimate(*msg_filtered)) {
@@ -199,10 +200,12 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
   }
 */
   // Containers.
-  PointCloud::Ptr msg_transformed(new PointCloud);
+//PointCloud::Ptr msg_transformed(new PointCloud);
   PointCloud::Ptr msg_neighbors(new PointCloud);
   PointCloud::Ptr msg_base(new PointCloud);
   PointCloud::Ptr msg_fixed(new PointCloud);
+
+
 
   // Transform the incoming point cloud to the best estimate of the base frame.
   //localization_.MotionUpdate(odometry_.GetIncrementalEstimate());
@@ -218,8 +221,16 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
 
    //Localize to the map. Localization will output a pointcloud aligned in the
    //sensor frame.
+   localization_.MotionUpdate(gu::Transform3::Identity());
    localization_.MeasurementUpdate(msg_filtered, msg_neighbors, msg_base.get());
 
+   //Ebrahim: for now just insert points
+   localization_.MotionUpdate(gu::Transform3::Identity());
+   localization_.TransformPointsToFixedFrame(*msg, msg_fixed.get());
+   PointCloud::Ptr unused(new PointCloud);
+   mapper_.InsertPoints(msg_fixed, unused.get());
+
+/*
   // Check for new loop closures.
   bool new_keyframe;
   if (HandleLoopClosures(msg, &new_keyframe)) {
@@ -243,7 +254,7 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
       mapper_.InsertPoints(msg_fixed, unused.get());
     }
   }
-
+*/
   // Visualize the pose graph and current loop closure radius.
   loop_closure_.PublishPoseGraph();
 
