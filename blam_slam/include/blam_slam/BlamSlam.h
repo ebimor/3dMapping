@@ -84,6 +84,8 @@ private:
   // The node's name.
   std::string name_;
 
+  bool first_time;
+
   // Update rates and callback timers.
   double estimate_update_rate_;
   double visualization_update_rate_;

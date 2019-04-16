@@ -203,18 +203,23 @@ bool LaserLoopClosure::AddBetweenFactor(
     return false;
   }
 
+ROS_INFO("lOOP CLOSURE 1 ");
   // Append the new odometry.
   Pose3 new_odometry = ToGtsam(delta);
+  ROS_INFO("lOOP CLOSURE 2 ");
 
   NonlinearFactorGraph new_factor;
   Values new_value;
   new_factor.add(MakeBetweenFactor(new_odometry, ToGtsam(covariance)));
+  ROS_INFO("lOOP CLOSURE 3 ");
 
   Pose3 last_pose = values_.at<Pose3>(key_-1);
   new_value.insert(key_, last_pose.compose(new_odometry));
+  ROS_INFO("lOOP CLOSURE 4 ");
 
   // Store this timestamp so that we can publish the pose graph later.
   keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(key_, stamp));
+  ROS_INFO("lOOP CLOSURE 5 ");
 
   // Update ISAM2.
   isam_->update(new_factor, new_value);
@@ -222,6 +227,7 @@ bool LaserLoopClosure::AddBetweenFactor(
 
   // Assign output and get ready to go again!
   *key = key_++;
+  ROS_INFO("lOOP CLOSURE 6 ");
 
   // We always add new poses, but only return true if the pose is far enough
   // away from the last one (keyframes). This lets the caller know when they

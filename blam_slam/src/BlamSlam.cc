@@ -50,9 +50,13 @@ BlamSlam::~BlamSlam() {}
 bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
   name_ = ros::names::append(n.getNamespace(), "BlamSlam");
 
+  first_time = true;
+
   if (!filter_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize point cloud filter.", name_.c_str());
     return false;
+  }else{
+    ROS_INFO("filter initialized");
   }
 
 /*
@@ -60,12 +64,14 @@ bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
     ROS_ERROR("%s: Failed to initialize point cloud odometry.", name_.c_str());
     return false;
   }
-
+*/
   if (!loop_closure_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize laser loop closure.", name_.c_str());
     return false;
+  }else{
+    ROS_INFO("Loop closure initialized");
   }
-*/
+
   if (!localization_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize localization.", name_.c_str());
     return false;
@@ -85,6 +91,8 @@ bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
     ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
     return false;
   }
+
+ROS_INFO("Finished initialization");
 
   return true;
 }
@@ -199,6 +207,18 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     return;
   }
 */
+
+if (first_time) {
+  // First update ever.
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(msg_filtered, unused.get());
+  loop_closure_.AddKeyScanPair(0, msg);
+  ROS_INFO("HEREEEE");
+  first_time = false;
+  return;
+}
+
+
   // Containers.
 //PointCloud::Ptr msg_transformed(new PointCloud);
   PointCloud::Ptr msg_neighbors(new PointCloud);
@@ -219,21 +239,24 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
   // Transform those nearest neighbors back into sensor frame to perform ICP.
   //localization_.TransformPointsToSensorFrame(*msg_neighbors, msg_neighbors.get());
 
+/* This blocks can do a minimum job for creating a map
    //Localize to the map. Localization will output a pointcloud aligned in the
    //sensor frame.
-   localization_.MotionUpdate(gu::Transform3::Identity());
+   //localization_.MotionUpdate(gu::Transform3::Identity());
    localization_.MeasurementUpdate(msg_filtered, msg_neighbors, msg_base.get());
 
    //Ebrahim: for now just insert points
-   localization_.MotionUpdate(gu::Transform3::Identity());
    localization_.TransformPointsToFixedFrame(*msg, msg_fixed.get());
    PointCloud::Ptr unused(new PointCloud);
    mapper_.InsertPoints(msg_fixed, unused.get());
+*/
 
-/*
+  localization_.MeasurementUpdate(msg_filtered, msg_neighbors, msg_base.get());
   // Check for new loop closures.
   bool new_keyframe;
   if (HandleLoopClosures(msg, &new_keyframe)) {
+
+    ROS_INFO("HandleLoopClosures is true");
     // We found one - regenerate the 3D map.
     PointCloud::Ptr regenerated_map(new PointCloud);
     loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
@@ -247,14 +270,17 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
   } else {
     // No new loop closures - but was there a new key frame? If so, add new
     // points to the map.
+    ROS_INFO("HandleLoopClosures is false");
+
     if (new_keyframe) {
-      localization_.MotionUpdate(gu::Transform3::Identity());
+      ROS_INFO("Insert new keyframe into the map");
+      //localization_.MotionUpdate(gu::Transform3::Identity());
       localization_.TransformPointsToFixedFrame(*msg, msg_fixed.get());
       PointCloud::Ptr unused(new PointCloud);
       mapper_.InsertPoints(msg_fixed, unused.get());
     }
   }
-*/
+
   // Visualize the pose graph and current loop closure radius.
   loop_closure_.PublishPoseGraph();
 
@@ -282,25 +308,34 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = 0.004;
 
+    ROS_INFO("Heree 10");
   const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
+  ROS_INFO("Heree 101");
+
   if (!loop_closure_.AddBetweenFactor(localization_.GetIncrementalEstimate(),
                                       covariance, stamp, &pose_key)) {
     return false;
   }
   *new_keyframe = true;
 
+  ROS_INFO("Heree 11");
+
   if (!loop_closure_.AddKeyScanPair(pose_key, scan)) {
     return false;
   }
+  ROS_INFO("Heree 12");
 
   std::vector<unsigned int> closure_keys;
   if (!loop_closure_.FindLoopClosures(pose_key, &closure_keys)) {
     return false;
   }
+  ROS_INFO("Heree 13");
 
   for (const auto& closure_key : closure_keys) {
     ROS_INFO("%s: Closed loop between poses %u and %u.", name_.c_str(),
              pose_key, closure_key);
   }
+  ROS_INFO("Heree 14");
+
   return true;
 }
