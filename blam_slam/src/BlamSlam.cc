@@ -39,6 +39,9 @@
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <gtsam/base/Vector.h>
+
+
 namespace pu = parameter_utils;
 namespace gu = geometry_utils;
 
@@ -59,12 +62,11 @@ bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
     ROS_INFO("filter initialized");
   }
 
-/*
   if (!odometry_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize point cloud odometry.", name_.c_str());
     return false;
   }
-*/
+
   if (!loop_closure_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize laser loop closure.", name_.c_str());
     return false;
@@ -75,21 +77,29 @@ bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
   if (!localization_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize localization.", name_.c_str());
     return false;
+  }else{
+    ROS_INFO("localization is initialized");
   }
 
   if (!mapper_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize mapper.", name_.c_str());
     return false;
+  }else{
+    ROS_INFO("Mapper is initialized");
   }
 
   if (!LoadParameters(n)) {
     ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
     return false;
+  }else{
+    ROS_INFO("paremters are loaded");
   }
 
   if (!RegisterCallbacks(n, from_log)) {
     ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
     return false;
+  }else{
+    ROS_INFO("Callbacks are registered");
   }
 
 ROS_INFO("Finished initialization");
@@ -308,9 +318,7 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = 0.004;
 
-    ROS_INFO("Heree 10");
   const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
-  ROS_INFO("Heree 101");
 
   if (!loop_closure_.AddBetweenFactor(localization_.GetIncrementalEstimate(),
                                       covariance, stamp, &pose_key)) {
@@ -318,24 +326,19 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
   }
   *new_keyframe = true;
 
-  ROS_INFO("Heree 11");
-
   if (!loop_closure_.AddKeyScanPair(pose_key, scan)) {
     return false;
   }
-  ROS_INFO("Heree 12");
 
   std::vector<unsigned int> closure_keys;
   if (!loop_closure_.FindLoopClosures(pose_key, &closure_keys)) {
     return false;
   }
-  ROS_INFO("Heree 13");
 
   for (const auto& closure_key : closure_keys) {
     ROS_INFO("%s: Closed loop between poses %u and %u.", name_.c_str(),
              pose_key, closure_key);
   }
-  ROS_INFO("Heree 14");
 
   return true;
 }

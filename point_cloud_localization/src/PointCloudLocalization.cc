@@ -75,6 +75,8 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
   if (!pu::Get("frame_id/base", base_frame_id_)) return false;
 
+  ROS_INFO("am I stuck?!");
+
   try
   {
     listener.waitForTransform(fixed_frame_id_, base_frame_id_, ros::Time(0), ros::Duration(3.0));

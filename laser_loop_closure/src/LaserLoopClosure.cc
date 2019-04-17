@@ -146,10 +146,12 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   Pose3 pose(rotation, translation);
 
   // Set the covariance on initial position.
-  Vector6 noise;
-  noise << sigma_x, sigma_y, sigma_z, sigma_roll, sigma_pitch, sigma_yaw;
-  LaserLoopClosure::Diagonal::shared_ptr covariance(
-      LaserLoopClosure::Diagonal::Sigmas(noise));
+  //Vector6 noise;
+  //noise << sigma_x, sigma_y, sigma_z, sigma_roll, sigma_pitch, sigma_yaw;
+  //ROS_INFO("HERE13");
+
+  LaserLoopClosure::Diagonal::shared_ptr covariance = LaserLoopClosure::Diagonal::Sigmas(
+          (gtsam::Vector(6) << sigma_x, sigma_y, sigma_z, sigma_roll, sigma_pitch, sigma_yaw).finished());
 
   // Initialize ISAM2.
   NonlinearFactorGraph new_factor;
@@ -409,6 +411,8 @@ Pose3 LaserLoopClosure::ToGtsam(const gu::Transform3& pose) const {
   Rot3 r(pose.rotation(0, 0), pose.rotation(0, 1), pose.rotation(0, 2),
          pose.rotation(1, 0), pose.rotation(1, 1), pose.rotation(1, 2),
          pose.rotation(2, 0), pose.rotation(2, 1), pose.rotation(2, 2));
+
+
 
   return Pose3(r, t);
 }

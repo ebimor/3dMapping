@@ -6,7 +6,7 @@ find_package(catkin REQUIRED COMPONENTS
   rosbag
   measurement_synchronizer
   point_cloud_filter
-  #point_cloud_odometry
+  point_cloud_odometry
   laser_loop_closure
   point_cloud_localization
   point_cloud_mapper
@@ -24,7 +24,7 @@ catkin_package(
     rosbag
     measurement_synchronizer
     point_cloud_filter
-    #point_cloud_odometry
+    point_cloud_odometry
     laser_loop_closure
     point_cloud_localization
     point_cloud_mapper
