@@ -99,8 +99,8 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
   geTransform.rotation.z = newTransform.getRotation().z();
   geTransform.rotation.w = newTransform.getRotation().w();
 
-
-  integrated_estimate_ = gr::FromROS(geTransform);
+  initial_loc_ = gr::FromROS(geTransform);
+  integrated_estimate_ = gu::PoseDelta(initial_loc_, initial_loc_);
   prev_integrated_estimate_ = integrated_estimate_;
 
 /*
@@ -296,7 +296,8 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   geTransform.rotation.z = newTransform.getRotation().z();
   geTransform.rotation.w = newTransform.getRotation().w();
 
-  integrated_estimate_ = gr::FromROS(geTransform);
+  gu::Transform3 absolute_estimate_= gr::FromROS(geTransform);
+  integrated_estimate_ = gu::PoseDelta(initial_loc_, absolute_estimate_);
   gu::Transform3 pose_update = gu::PoseDelta(prev_integrated_estimate_, integrated_estimate_);
   prev_integrated_estimate_ = integrated_estimate_;
 
@@ -304,7 +305,7 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   if (!transform_thresholding_ ||
       (pose_update.translation.Norm() <= max_translation_ &&
        pose_update.rotation.ToEulerZYX().Norm() <= max_rotation_)) {
-    ROS_INFO("reasonable incremental_estimate_");
+    //ROS_INFO("reasonable incremental_estimate_");
     incremental_estimate_ = pose_update;
   } else {
     ROS_WARN(

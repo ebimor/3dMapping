@@ -100,6 +100,7 @@ private:
   std::string name_;
 
   // Pose estimate.
+  geometry_utils::Transform3 initial_loc_;
   geometry_utils::Transform3 incremental_estimate_;
   geometry_utils::Transform3 integrated_estimate_;
   geometry_utils::Transform3 prev_integrated_estimate_;
