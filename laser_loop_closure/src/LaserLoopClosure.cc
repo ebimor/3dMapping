@@ -513,10 +513,14 @@ bool LaserLoopClosure::PerformICP(const PointCloud::ConstPtr& scan1,
                                 T(2, 0), T(2, 1), T(2, 2));
 
   // Is the transform good?
-  if (!icp.hasConverged())
+  if (!icp.hasConverged()){
+    ROS_WARN("ICP did not converged");
     return false;
+  }
 
-  if (icp.getFitnessScore() > max_tolerable_fitness_) {
+  double scoreICP = icp.getFitnessScore();
+  if ( scoreICP > max_tolerable_fitness_) {
+    ROS_INFO_STREAM("ICP score is: "<<scoreICP);
     return false;
   }
 

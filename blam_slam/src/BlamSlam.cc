@@ -317,6 +317,7 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
 
   const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
 
+
   if (!loop_closure_.AddBetweenFactor(localization_.GetIncrementalEstimate(),
                                       covariance, stamp, &pose_key)) {
     return false;
