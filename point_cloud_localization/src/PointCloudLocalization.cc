@@ -79,7 +79,7 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
 
   try
   {
-    listener.waitForTransform(fixed_frame_id_, base_frame_id_, ros::Time(0), ros::Duration(3.0));
+    listener.waitForTransform(fixed_frame_id_, base_frame_id_, ros::Time(0), ros::Duration(10.0));
     listener.lookupTransform(fixed_frame_id_, base_frame_id_, ros::Time(0), newTransform);
   }
   catch (tf::TransformException ex)
@@ -99,9 +99,18 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
   geTransform.rotation.z = newTransform.getRotation().z();
   geTransform.rotation.w = newTransform.getRotation().w();
 
+
+
   initial_loc_ = gr::FromROS(geTransform);
+  Eigen::Matrix<double, 3, 1> T = initial_loc_.translation.Eigen();
+  Eigen::Matrix<double, 3, 3> R = initial_loc_.rotation.Eigen();
+
+  ROS_INFO_STREAM("Initial translation is: "<<T);
+  ROS_INFO_STREAM("Initial rotation is: "<<R);
+
   integrated_estimate_ = gu::PoseDelta(initial_loc_, initial_loc_);
   prev_integrated_estimate_ = integrated_estimate_;
+
 
 /*
   // Load initial position.
@@ -300,6 +309,8 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   integrated_estimate_ = gu::PoseDelta(initial_loc_, absolute_estimate_);
   gu::Transform3 pose_update = gu::PoseDelta(prev_integrated_estimate_, integrated_estimate_);
   prev_integrated_estimate_ = integrated_estimate_;
+
+
 
   // Only update if the transform is small enough.
   if (!transform_thresholding_ ||

@@ -223,7 +223,6 @@ if (first_time) {
   PointCloud::Ptr unused(new PointCloud);
   mapper_.InsertPoints(msg_filtered, unused.get());
   loop_closure_.AddKeyScanPair(0, msg);
-  ROS_INFO("HEREEEE");
   first_time = false;
   return;
 }
@@ -262,6 +261,7 @@ if (first_time) {
 */
 
   localization_.MeasurementUpdate(msg_filtered, msg_neighbors, msg_base.get());
+
   // Check for new loop closures.
   bool new_keyframe;
   if (HandleLoopClosures(msg, &new_keyframe)) {
@@ -280,10 +280,7 @@ if (first_time) {
   } else {
     // No new loop closures - but was there a new key frame? If so, add new
     // points to the map.
-    ROS_INFO("HandleLoopClosures is false");
-
     if (new_keyframe) {
-      ROS_INFO("Insert new keyframe into the map");
       //localization_.MotionUpdate(gu::Transform3::Identity());
       localization_.TransformPointsToFixedFrame(*msg, msg_fixed.get());
       PointCloud::Ptr unused(new PointCloud);
