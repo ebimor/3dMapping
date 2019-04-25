@@ -239,14 +239,14 @@ if (first_time) {
   // Transform the incoming point cloud to the best estimate of the base frame.
   //localization_.MotionUpdate(odometry_.GetIncrementalEstimate());
 
-  //localization_.TransformPointsToFixedFrame(*msg_filtered,
-  //                                          msg_transformed.get());
+  localization_.TransformPointsToFixedFrame(*msg_filtered,
+                                            msg_transformed.get());
 
   // Get approximate nearest neighbors from the map.
-  //mapper_.ApproxNearestNeighbors(*msg_transformed, msg_neighbors.get());
+  mapper_.ApproxNearestNeighbors(*msg_transformed, msg_neighbors.get());
 
   // Transform those nearest neighbors back into sensor frame to perform ICP.
-  //localization_.TransformPointsToSensorFrame(*msg_neighbors, msg_neighbors.get());
+  localization_.TransformPointsToSensorFrame(*msg_neighbors, msg_neighbors.get());
 
 /* This blocks can do a minimum job for creating a map
    //Localize to the map. Localization will output a pointcloud aligned in the

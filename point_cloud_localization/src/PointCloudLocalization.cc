@@ -306,11 +306,19 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   geTransform.rotation.w = newTransform.getRotation().w();
 
   gu::Transform3 absolute_estimate_= gr::FromROS(geTransform);
-  integrated_estimate_ = gu::PoseDelta(initial_loc_, absolute_estimate_);
-  gu::Transform3 pose_update = gu::PoseDelta(prev_integrated_estimate_, integrated_estimate_);
-  prev_integrated_estimate_ = integrated_estimate_;
+  gu::Transform3 rough_integrated_estimate_ = gu::PoseDelta(initial_loc_, absolute_estimate_);
+  gu::Transform3 pose_update = gu::PoseDelta(prev_integrated_estimate_, rough_integrated_estimate_);
 
+  //use the above pose update to roughly align the two pcls
+  const Eigen::Matrix<double, 3, 3> R = pose_update.rotation.Eigen();
+  const Eigen::Matrix<double, 3, 1> T = pose_update.translation.Eigen();
 
+  Eigen::Matrix4d tff;
+  tff.block(0, 0, 3, 3) = R;
+  tff.block(0, 3, 3, 1) = T;
+  pcl::transformPointCloud(*query, *aligned_query, tff);
+
+  //noe perform icp between algined querry and reference pcl
 
   // Only update if the transform is small enough.
   if (!transform_thresholding_ ||
@@ -325,59 +333,9 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
         pose_update.rotation.ToEulerZYX().Norm());
   }
 
-/*
-  gu::Transform3 pose_update = gr::FromROS(geTransform);
 
-  const Eigen::Matrix<double, 3, 3> R = pose_update.rotation.Eigen();
-  const Eigen::Matrix<double, 3, 1> T = pose_update.translation.Eigen();
+  prev_integrated_estimate_ = integrated_estimate_;
 
-  Eigen::Matrix4d tff;
-  tff.block(0, 0, 3, 3) = R;
-  tff.block(0, 3, 3, 1) = T;
-  pcl::transformPointCloud(*query, *aligned_query, tff);
-
-
-
-  //gu::Transform3 pose_update;
-  //pose_update.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
-  //pose_update.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
-  //                                T(1, 0), T(1, 1), T(1, 2),
-  //                                T(2, 0), T(2, 1), T(2, 2));
-
-
-  // Only update if the transform is small enough.
-  if (!transform_thresholding_ ||
-      (pose_update.translation.Norm() <= max_translation_ &&
-       pose_update.rotation.ToEulerZYX().Norm() <= max_rotation_)) {
-    incremental_estimate_ = gu::PoseUpdate(incremental_estimate_, pose_update);
-  } else {
-    ROS_WARN(
-        " %s: Discarding incremental transformation with norm (t: %lf, r: %lf)",
-        name_.c_str(), pose_update.translation.Norm(),
-        pose_update.rotation.ToEulerZYX().Norm());
-  }
-
-  integrated_estimate_ =
-      gu::PoseUpdate(integrated_estimate_, incremental_estimate_);
-
-  // Convert pose estimates to ROS format and publish.
-  PublishPose(incremental_estimate_, incremental_estimate_pub_);
-  PublishPose(integrated_estimate_, integrated_estimate_pub_);
-
-  // Publish point clouds for visualization.
-  PublishPoints(*query, query_pub_);
-  PublishPoints(*reference, reference_pub_);
-  PublishPoints(*aligned_query, aligned_pub_);
-
-
-  // Publish transform between fixed frame and localization frame.
-  geometry_msgs::TransformStamped tf;
-  tf.transform = gr::ToRosTransform(integrated_estimate_);
-  tf.header.stamp = stamp_;
-  tf.header.frame_id = fixed_frame_id_;
-  tf.child_frame_id = base_frame_id_;
-  tfbr_.sendTransform(tf);
-*/
 
   return true;
 }
