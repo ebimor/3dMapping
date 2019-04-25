@@ -75,10 +75,12 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
   if (!pu::Get("frame_id/base", base_frame_id_)) return false;
 
+  ROS_INFO("am I stuck?!");
+
   try
   {
-    listener.waitForTransform(fixed_frame_id_, base_frame_id_, ros::Time(0), ros::Duration(3.0));
-    listener.lookupTransform(fixed_frame_id_, base_frame_id_, ros::Time(0), prevTransform);
+    listener.waitForTransform(fixed_frame_id_, base_frame_id_, ros::Time(0), ros::Duration(10.0));
+    listener.lookupTransform(fixed_frame_id_, base_frame_id_, ros::Time(0), newTransform);
   }
   catch (tf::TransformException ex)
   {
@@ -88,17 +90,27 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
   }
 
   geometry_msgs::Transform geTransform;
-  geTransform.translation.x = prevTransform.getOrigin().x();
-  geTransform.translation.y = prevTransform.getOrigin().y();
-  geTransform.translation.z = prevTransform.getOrigin().z();
+  geTransform.translation.x = newTransform.getOrigin().x();
+  geTransform.translation.y = newTransform.getOrigin().y();
+  geTransform.translation.z = newTransform.getOrigin().z();
 
-  geTransform.rotation.x = prevTransform.getRotation().x();
-  geTransform.rotation.y = prevTransform.getRotation().y();
-  geTransform.rotation.z = prevTransform.getRotation().z();
-  geTransform.rotation.w = prevTransform.getRotation().w();
+  geTransform.rotation.x = newTransform.getRotation().x();
+  geTransform.rotation.y = newTransform.getRotation().y();
+  geTransform.rotation.z = newTransform.getRotation().z();
+  geTransform.rotation.w = newTransform.getRotation().w();
 
 
-  integrated_estimate_ = gr::FromROS(geTransform);
+
+  initial_loc_ = gr::FromROS(geTransform);
+  Eigen::Matrix<double, 3, 1> T = initial_loc_.translation.Eigen();
+  Eigen::Matrix<double, 3, 3> R = initial_loc_.rotation.Eigen();
+
+  ROS_INFO_STREAM("Initial translation is: "<<T);
+  ROS_INFO_STREAM("Initial rotation is: "<<R);
+
+  integrated_estimate_ = gu::PoseDelta(initial_loc_, initial_loc_);
+  prev_integrated_estimate_ = integrated_estimate_;
+
 
 /*
   // Load initial position.
@@ -146,6 +158,12 @@ bool PointCloudLocalization::RegisterCallbacks(const ros::NodeHandle& n) {
 }
 
 const gu::Transform3& PointCloudLocalization::GetIncrementalEstimate() const {
+
+  //double curr_x = incremental_estimate_.translation(0);
+  //double curr_y = incremental_estimate_.translation(1);
+
+  //std::cout<<"current location is: "<<curr_x<<" , "<<curr_y<<std::endl;
+
   return incremental_estimate_;
 }
 
@@ -171,7 +189,7 @@ void PointCloudLocalization::SetIntegratedEstimate(
 bool PointCloudLocalization::MotionUpdate(
     const gu::Transform3& incremental_odom) {
   // Store the incremental transform from odometry.
-  incremental_estimate_ = gu::Transform3::Identity(); // incremental_odom;
+  incremental_estimate_ = incremental_odom;  //gu::Transform3::Identity(); // incremental_odom;
   return true;
 }
 
@@ -184,8 +202,8 @@ bool PointCloudLocalization::TransformPointsToFixedFrame(
 
   // Compose the current incremental estimate (from odometry) with the
   // integrated estimate, and transform the incoming point cloud.
-  const gu::Transform3 estimate =
-      gu::PoseUpdate(integrated_estimate_, incremental_estimate_);
+  const gu::Transform3 estimate = integrated_estimate_;
+//      gu::PoseUpdate(integrated_estimate_, incremental_estimate_);
   const Eigen::Matrix<double, 3, 3> R = estimate.rotation.Eigen();
   const Eigen::Matrix<double, 3, 1> T = estimate.translation.Eigen();
 
@@ -207,8 +225,8 @@ bool PointCloudLocalization::TransformPointsToSensorFrame(
 
   // Compose the current incremental estimate (from odometry) with the
   // integrated estimate, then invert to go from world to sensor frame.
-  const gu::Transform3 estimate = gu::PoseInverse(
-      gu::PoseUpdate(integrated_estimate_, incremental_estimate_));
+  const gu::Transform3 estimate = gu::PoseInverse(integrated_estimate_);
+  //    gu::PoseUpdate(integrated_estimate_, incremental_estimate_));
   const Eigen::Matrix<double, 3, 3> R = estimate.rotation.Eigen();
   const Eigen::Matrix<double, 3, 1> T = estimate.translation.Eigen();
 
@@ -268,9 +286,9 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   }
 
   //find relative transform with respect to previous transform
-  tf::StampedTransform transform;
-  transform.mult(newTransform, prevTransform.inverse());
-  prevTransform = newTransform;
+  //tf::StampedTransform transform;
+  //transform.mult(newTransform, prevTransform.inverse());
+  //prevTransform = newTransform;
 
   //double curr_x = transform.getOrigin().x();
   //double curr_y = transform.getOrigin().y();
@@ -287,7 +305,25 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   geTransform.rotation.z = newTransform.getRotation().z();
   geTransform.rotation.w = newTransform.getRotation().w();
 
-  integrated_estimate_ = gr::FromROS(geTransform);
+  gu::Transform3 absolute_estimate_= gr::FromROS(geTransform);
+  integrated_estimate_ = gu::PoseDelta(initial_loc_, absolute_estimate_);
+  gu::Transform3 pose_update = gu::PoseDelta(prev_integrated_estimate_, integrated_estimate_);
+  prev_integrated_estimate_ = integrated_estimate_;
+
+
+
+  // Only update if the transform is small enough.
+  if (!transform_thresholding_ ||
+      (pose_update.translation.Norm() <= max_translation_ &&
+       pose_update.rotation.ToEulerZYX().Norm() <= max_rotation_)) {
+    //ROS_INFO("reasonable incremental_estimate_");
+    incremental_estimate_ = pose_update;
+  } else {
+    ROS_WARN(
+        " %s: Discarding incremental transformation with norm (t: %lf, r: %lf)",
+        name_.c_str(), pose_update.translation.Norm(),
+        pose_update.rotation.ToEulerZYX().Norm());
+  }
 
 /*
   gu::Transform3 pose_update = gr::FromROS(geTransform);

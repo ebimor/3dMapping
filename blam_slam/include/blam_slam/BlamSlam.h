@@ -40,7 +40,7 @@
 #include <ros/ros.h>
 #include <measurement_synchronizer/MeasurementSynchronizer.h>
 #include <point_cloud_filter/PointCloudFilter.h>
-//#include <point_cloud_odometry/PointCloudOdometry.h>
+#include <point_cloud_odometry/PointCloudOdometry.h>
 #include <laser_loop_closure/LaserLoopClosure.h>
 #include <point_cloud_localization/PointCloudLocalization.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
@@ -84,6 +84,8 @@ private:
   // The node's name.
   std::string name_;
 
+  bool first_time;
+
   // Update rates and callback timers.
   double estimate_update_rate_;
   double visualization_update_rate_;
@@ -103,7 +105,7 @@ private:
   // Class objects (BlamSlam is a composite class).
   MeasurementSynchronizer synchronizer_;
   PointCloudFilter filter_;
-  //PointCloudOdometry odometry_;
+  PointCloudOdometry odometry_;
   LaserLoopClosure loop_closure_;
   PointCloudLocalization localization_;
   PointCloudMapper mapper_;

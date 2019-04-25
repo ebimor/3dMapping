@@ -146,10 +146,12 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   Pose3 pose(rotation, translation);
 
   // Set the covariance on initial position.
-  Vector6 noise;
-  noise << sigma_x, sigma_y, sigma_z, sigma_roll, sigma_pitch, sigma_yaw;
-  LaserLoopClosure::Diagonal::shared_ptr covariance(
-      LaserLoopClosure::Diagonal::Sigmas(noise));
+  //Vector6 noise;
+  //noise << sigma_x, sigma_y, sigma_z, sigma_roll, sigma_pitch, sigma_yaw;
+  //ROS_INFO("HERE13");
+
+  LaserLoopClosure::Diagonal::shared_ptr covariance = LaserLoopClosure::Diagonal::Sigmas(
+          (gtsam::Vector(6) << sigma_x, sigma_y, sigma_z, sigma_roll, sigma_pitch, sigma_yaw).finished());
 
   // Initialize ISAM2.
   NonlinearFactorGraph new_factor;
@@ -404,6 +406,8 @@ Pose3 LaserLoopClosure::ToGtsam(const gu::Transform3& pose) const {
          pose.rotation(1, 0), pose.rotation(1, 1), pose.rotation(1, 2),
          pose.rotation(2, 0), pose.rotation(2, 1), pose.rotation(2, 2));
 
+
+
   return Pose3(r, t);
 }
 
@@ -421,13 +425,19 @@ LaserLoopClosure::Mat66 LaserLoopClosure::ToGu(
 
 LaserLoopClosure::Gaussian::shared_ptr LaserLoopClosure::ToGtsam(
     const LaserLoopClosure::Mat66& covariance) const {
-  gtsam::Matrix66 gtsam_covariance;
+
+  //gtsam::Matrix66 gtsam_covariance;
+  Eigen::MatrixXd cov(6,6);
 
   for (int i = 0; i < 6; ++i)
-    for (int j = 0; j < 6; ++j)
-      gtsam_covariance(i, j) = covariance(i, j);
+    for (int j = 0; j < 6; ++j){
+      //gtsam_covariance(i, j) = covariance(i, j);
+      cov(i,j) = covariance(i,j);
+    }
 
-  return Gaussian::Covariance(gtsam_covariance);
+  LaserLoopClosure::Gaussian::shared_ptr res = Gaussian::Covariance(cov);
+
+  return res ;
 }
 
 PriorFactor<Pose3> LaserLoopClosure::MakePriorFactor(
@@ -503,10 +513,14 @@ bool LaserLoopClosure::PerformICP(const PointCloud::ConstPtr& scan1,
                                 T(2, 0), T(2, 1), T(2, 2));
 
   // Is the transform good?
-  if (!icp.hasConverged())
+  if (!icp.hasConverged()){
+    ROS_WARN("ICP did not converged");
     return false;
+  }
 
-  if (icp.getFitnessScore() > max_tolerable_fitness_) {
+  double scoreICP = icp.getFitnessScore();
+  if ( scoreICP > max_tolerable_fitness_) {
+    ROS_INFO_STREAM("ICP score is: "<<scoreICP);
     return false;
   }
 

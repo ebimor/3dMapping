@@ -100,8 +100,11 @@ private:
   std::string name_;
 
   // Pose estimate.
+  geometry_utils::Transform3 initial_loc_;
   geometry_utils::Transform3 incremental_estimate_;
   geometry_utils::Transform3 integrated_estimate_;
+  geometry_utils::Transform3 prev_integrated_estimate_;
+
 
   // Publishers.
   ros::Publisher reference_pub_;
@@ -120,7 +123,7 @@ private:
   // Transform broadcasting to other nodes.
   tf2_ros::TransformBroadcaster tfbr_;
   tf::TransformListener listener;
-  tf::StampedTransform prevTransform, newTransform;
+  tf::StampedTransform newTransform;
 
 
 

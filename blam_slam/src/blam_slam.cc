@@ -42,6 +42,8 @@ int main(int argc, char** argv) {
   ros::NodeHandle n("~");
 
   BlamSlam bs;
+  ROS_INFO("Initializing");
+
   if (!bs.Initialize(n, false /* online processing */)) {
     ROS_ERROR("%s: Failed to initialize BLAM SLAM.",
               ros::this_node::getName().c_str());
