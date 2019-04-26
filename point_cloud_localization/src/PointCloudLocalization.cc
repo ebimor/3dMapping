@@ -39,6 +39,7 @@
 #include <parameter_utils/ParameterUtils.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <Eigen/Dense>
 
 #include <pcl/registration/gicp.h>
 
@@ -249,31 +250,6 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
 
   stamp_.fromNSec(query->header.stamp*1e3);
 
-
-/*
-  // Store time stamp.
-
-  // ICP-based alignment. Generalized ICP does (roughly) plane-to-plane
-  // matching, and is much more robust than standard ICP.
-  GeneralizedIterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-  icp.setTransformationEpsilon(params_.tf_epsilon);
-  icp.setMaxCorrespondenceDistance(params_.corr_dist);
-  icp.setMaximumIterations(params_.iterations);
-  icp.setRANSACIterations(0);
-  icp.setMaximumOptimizerIterations(50); // default 20
-
-  icp.setInputSource(query);
-  icp.setInputTarget(reference);
-
-  PointCloud unused;
-  icp.align(unused);
-
-  // Retrieve transformation and estimate and update.
-  const Eigen::Matrix4f T = icp.getFinalTransformation();
-
-  pcl::transformPointCloud(*query, *aligned_query, T);
-*/
-
   try
   {
     listener.waitForTransform(fixed_frame_id_, base_frame_id_, stamp_, ros::Duration(3.0));
@@ -284,16 +260,6 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
     ROS_ERROR("%s", ex.what());
     ros::Duration(1.0).sleep();
   }
-
-  //find relative transform with respect to previous transform
-  //tf::StampedTransform transform;
-  //transform.mult(newTransform, prevTransform.inverse());
-  //prevTransform = newTransform;
-
-  //double curr_x = transform.getOrigin().x();
-  //double curr_y = transform.getOrigin().y();
-
-  //std::cout<<"current location is: "<<curr_x<<" , "<<curr_y<<std::endl;
 
   geometry_msgs::Transform geTransform;
   geTransform.translation.x = newTransform.getOrigin().x();
@@ -307,25 +273,55 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
 
   gu::Transform3 absolute_estimate_= gr::FromROS(geTransform);
   gu::Transform3 rough_integrated_estimate_ = gu::PoseDelta(initial_loc_, absolute_estimate_);
-  gu::Transform3 pose_update = gu::PoseDelta(prev_integrated_estimate_, rough_integrated_estimate_);
+  gu::Transform3 rough_pose_update = gu::PoseDelta(prev_integrated_estimate_, rough_integrated_estimate_);
 
   //use the above pose update to roughly align the two pcls
-  const Eigen::Matrix<double, 3, 3> R = pose_update.rotation.Eigen();
-  const Eigen::Matrix<double, 3, 1> T = pose_update.translation.Eigen();
+  const Eigen::Matrix<double, 3, 3> Rot = rough_pose_update.rotation.Eigen();
+  const Eigen::Matrix<double, 3, 1> Trans = rough_pose_update.translation.Eigen();
 
   Eigen::Matrix4d tff;
-  tff.block(0, 0, 3, 3) = R;
-  tff.block(0, 3, 3, 1) = T;
-  pcl::transformPointCloud(*query, *aligned_query, tff);
+  tff.block(0, 0, 3, 3) = Rot;
+  tff.block(0, 3, 3, 1) = Trans;
 
-  //noe perform icp between algined querry and reference pcl
+  Eigen::Matrix4f tff_float = tff.cast<float>();
+
+  //transform querry pcl to align it with the reference
+  PointCloud::Ptr aligned_pcl(new PointCloud);
+  pcl::transformPointCloud(*query, *aligned_pcl, tff);
+
+  //now perform icp between algined querry and reference pcl
+  // ICP-based alignment. Generalized ICP does (roughly) plane-to-plane
+  // matching, and is much more robust than standard ICP.
+  GeneralizedIterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+  icp.setTransformationEpsilon(params_.tf_epsilon);
+  icp.setMaxCorrespondenceDistance(params_.corr_dist);
+  icp.setMaximumIterations(params_.iterations);
+  icp.setRANSACIterations(0);
+  icp.setMaximumOptimizerIterations(50); // default 20
+
+  icp.setInputSource(aligned_pcl);
+  icp.setInputTarget(reference);
+
+  PointCloud unused;
+  icp.align(unused);
+
+  // Retrieve transformation and estimate and update.
+  const Eigen::Matrix4f T = icp.getFinalTransformation()*tff_float;
+  pcl::transformPointCloud(*query, *aligned_query, T);
+
+
+  gu::Transform3 pose_update;
+  pose_update.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
+  pose_update.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
+                                  T(1, 0), T(1, 1), T(1, 2),
+                                  T(2, 0), T(2, 1), T(2, 2));
+
 
   // Only update if the transform is small enough.
   if (!transform_thresholding_ ||
       (pose_update.translation.Norm() <= max_translation_ &&
        pose_update.rotation.ToEulerZYX().Norm() <= max_rotation_)) {
-    //ROS_INFO("reasonable incremental_estimate_");
-    incremental_estimate_ = pose_update;
+    incremental_estimate_ = pose_update; //gu::PoseUpdate(incremental_estimate_, pose_update);
   } else {
     ROS_WARN(
         " %s: Discarding incremental transformation with norm (t: %lf, r: %lf)",
@@ -333,8 +329,10 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
         pose_update.rotation.ToEulerZYX().Norm());
   }
 
-
   prev_integrated_estimate_ = integrated_estimate_;
+
+  integrated_estimate_ =
+      gu::PoseUpdate(integrated_estimate_, incremental_estimate_);
 
 
   return true;

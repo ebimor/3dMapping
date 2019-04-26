@@ -229,7 +229,7 @@ if (first_time) {
 
 
   // Containers.
-//PointCloud::Ptr msg_transformed(new PointCloud);
+  PointCloud::Ptr msg_transformed(new PointCloud);
   PointCloud::Ptr msg_neighbors(new PointCloud);
   PointCloud::Ptr msg_base(new PointCloud);
   PointCloud::Ptr msg_fixed(new PointCloud);
