@@ -66,7 +66,7 @@ public:
                                     PointCloud* points_transformed) const;
 
   // Store incremental estimate from odometry.
-  bool MotionUpdate(const geometry_utils::Transform3& incremental_odom);
+  bool MotionUpdate(const PointCloud::Ptr& query);
 
   // Align incoming point cloud with a reference point cloud from the map.
   // Output the query scan aligned in the localization frame.
@@ -103,7 +103,7 @@ private:
   geometry_utils::Transform3 initial_loc_;
   geometry_utils::Transform3 incremental_estimate_;
   geometry_utils::Transform3 integrated_estimate_;
-  geometry_utils::Transform3 prev_integrated_estimate_;
+  geometry_utils::Transform3 rough_integrated_estimate_;
 
 
   // Publishers.

@@ -237,7 +237,7 @@ if (first_time) {
 
 
   // Transform the incoming point cloud to the best estimate of the base frame.
-  //localization_.MotionUpdate(odometry_.GetIncrementalEstimate());
+  localization_.MotionUpdate(msg_filtered);
 
   localization_.TransformPointsToFixedFrame(*msg_filtered,
                                             msg_transformed.get());
@@ -280,7 +280,9 @@ if (first_time) {
   } else {
     // No new loop closures - but was there a new key frame? If so, add new
     // points to the map.
+    ROS_INFO("no loop closure");
     if (new_keyframe) {
+      ROS_INFO("keyframe");
       //localization_.MotionUpdate(gu::Transform3::Identity());
       localization_.TransformPointsToFixedFrame(*msg, msg_fixed.get());
       PointCloud::Ptr unused(new PointCloud);

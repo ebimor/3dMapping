@@ -110,7 +110,7 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
   ROS_INFO_STREAM("Initial rotation is: "<<R);
 
   integrated_estimate_ = gu::PoseDelta(initial_loc_, initial_loc_);
-  prev_integrated_estimate_ = integrated_estimate_;
+  //prev_integrated_estimate_ = integrated_estimate_;
 
 
 /*
@@ -188,9 +188,44 @@ void PointCloudLocalization::SetIntegratedEstimate(
 }
 
 bool PointCloudLocalization::MotionUpdate(
-    const gu::Transform3& incremental_odom) {
+    const PointCloud::Ptr& query) {
   // Store the incremental transform from odometry.
-  incremental_estimate_ = incremental_odom;  //gu::Transform3::Identity(); // incremental_odom;
+  //incremental_estimate_ = incremental_odom;  //gu::Transform3::Identity(); // incremental_odom;
+  stamp_.fromNSec(query->header.stamp*1e3);
+
+  bool transformation_exists = true;
+  try
+  {
+    listener.waitForTransform(fixed_frame_id_, base_frame_id_, stamp_, ros::Duration(0.1));
+    listener.lookupTransform(fixed_frame_id_, base_frame_id_, stamp_, newTransform);
+  }
+  catch (tf::TransformException ex)
+  {
+    ROS_ERROR("%s. Motion Update Failed.", ex.what());
+    transformation_exists = false;
+  }
+
+  gu::Transform3 absolute_estimate_;
+
+  if(transformation_exists){
+    geometry_msgs::Transform geTransform;
+    geTransform.translation.x = newTransform.getOrigin().x();
+    geTransform.translation.y = newTransform.getOrigin().y();
+    geTransform.translation.z = newTransform.getOrigin().z();
+
+    geTransform.rotation.x = newTransform.getRotation().x();
+    geTransform.rotation.y = newTransform.getRotation().y();
+    geTransform.rotation.z = newTransform.getRotation().z();
+    geTransform.rotation.w = newTransform.getRotation().w();
+
+    absolute_estimate_= gr::FromROS(geTransform);
+    rough_integrated_estimate_ = gu::PoseDelta(initial_loc_, absolute_estimate_);
+    incremental_estimate_ = gu::PoseDelta(integrated_estimate_, rough_integrated_estimate_);
+  }else{
+    rough_integrated_estimate_ = integrated_estimate_;
+    incremental_estimate_ = gu::Transform3::Identity();
+  }
+
   return true;
 }
 
@@ -203,8 +238,8 @@ bool PointCloudLocalization::TransformPointsToFixedFrame(
 
   // Compose the current incremental estimate (from odometry) with the
   // integrated estimate, and transform the incoming point cloud.
-  const gu::Transform3 estimate = integrated_estimate_;
-//      gu::PoseUpdate(integrated_estimate_, incremental_estimate_);
+  const gu::Transform3 estimate = rough_integrated_estimate_;
+  //gu::PoseUpdate(integrated_estimate_, incremental_estimate_);
   const Eigen::Matrix<double, 3, 3> R = estimate.rotation.Eigen();
   const Eigen::Matrix<double, 3, 1> T = estimate.translation.Eigen();
 
@@ -226,8 +261,8 @@ bool PointCloudLocalization::TransformPointsToSensorFrame(
 
   // Compose the current incremental estimate (from odometry) with the
   // integrated estimate, then invert to go from world to sensor frame.
-  const gu::Transform3 estimate = gu::PoseInverse(integrated_estimate_);
-  //    gu::PoseUpdate(integrated_estimate_, incremental_estimate_));
+  const gu::Transform3 estimate = gu::PoseInverse(rough_integrated_estimate_);
+    //gu::PoseUpdate(integrated_estimate_, incremental_estimate_));
   const Eigen::Matrix<double, 3, 3> R = estimate.rotation.Eigen();
   const Eigen::Matrix<double, 3, 1> T = estimate.translation.Eigen();
 
@@ -248,47 +283,21 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
     return false;
   }
 
-  stamp_.fromNSec(query->header.stamp*1e3);
-
-  try
-  {
-    listener.waitForTransform(fixed_frame_id_, base_frame_id_, stamp_, ros::Duration(3.0));
-    listener.lookupTransform(fixed_frame_id_, base_frame_id_, stamp_, newTransform);
-  }
-  catch (tf::TransformException ex)
-  {
-    ROS_ERROR("%s", ex.what());
-    ros::Duration(1.0).sleep();
-  }
-
-  geometry_msgs::Transform geTransform;
-  geTransform.translation.x = newTransform.getOrigin().x();
-  geTransform.translation.y = newTransform.getOrigin().y();
-  geTransform.translation.z = newTransform.getOrigin().z();
-
-  geTransform.rotation.x = newTransform.getRotation().x();
-  geTransform.rotation.y = newTransform.getRotation().y();
-  geTransform.rotation.z = newTransform.getRotation().z();
-  geTransform.rotation.w = newTransform.getRotation().w();
-
-  gu::Transform3 absolute_estimate_= gr::FromROS(geTransform);
-  gu::Transform3 rough_integrated_estimate_ = gu::PoseDelta(initial_loc_, absolute_estimate_);
-  gu::Transform3 rough_pose_update = gu::PoseDelta(prev_integrated_estimate_, rough_integrated_estimate_);
-
+/*
   //use the above pose update to roughly align the two pcls
-  const Eigen::Matrix<double, 3, 3> Rot = rough_pose_update.rotation.Eigen();
-  const Eigen::Matrix<double, 3, 1> Trans = rough_pose_update.translation.Eigen();
+  const Eigen::Matrix<double, 3, 3> Rot = incremental_estimate_.rotation.Eigen();
+  const Eigen::Matrix<double, 3, 1> Trans = incremental_estimate_.translation.Eigen();
 
   Eigen::Matrix4d tff;
   tff.block(0, 0, 3, 3) = Rot;
   tff.block(0, 3, 3, 1) = Trans;
-
+  //cast the tff as float for final transformation
   Eigen::Matrix4f tff_float = tff.cast<float>();
 
   //transform querry pcl to align it with the reference
   PointCloud::Ptr aligned_pcl(new PointCloud);
   pcl::transformPointCloud(*query, *aligned_pcl, tff);
-
+*/
   //now perform icp between algined querry and reference pcl
   // ICP-based alignment. Generalized ICP does (roughly) plane-to-plane
   // matching, and is much more robust than standard ICP.
@@ -299,41 +308,45 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   icp.setRANSACIterations(0);
   icp.setMaximumOptimizerIterations(50); // default 20
 
-  icp.setInputSource(aligned_pcl);
+  icp.setInputSource(query);
   icp.setInputTarget(reference);
 
-  PointCloud unused;
-  icp.align(unused);
+  //PointCloud unused;
+  icp.align(*aligned_query);
 
-  // Retrieve transformation and estimate and update.
-  const Eigen::Matrix4f T = icp.getFinalTransformation()*tff_float;
-  pcl::transformPointCloud(*query, *aligned_query, T);
+ ROS_INFO_STREAM("has converged:" << icp.hasConverged() << " score: " << icp.getFitnessScore());
 
-
-  gu::Transform3 pose_update;
-  pose_update.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
-  pose_update.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
-                                  T(1, 0), T(1, 1), T(1, 2),
-                                  T(2, 0), T(2, 1), T(2, 2));
+ if(icp.getFitnessScore() < 1 && icp.hasConverged()){
+    // Retrieve transformation and estimate and update.
+    const Eigen::Matrix4f T = icp.getFinalTransformation(); //*tff_float;
+    //pcl::transformPointCloud(*query, *aligned_query, T);
 
 
-  // Only update if the transform is small enough.
-  if (!transform_thresholding_ ||
-      (pose_update.translation.Norm() <= max_translation_ &&
-       pose_update.rotation.ToEulerZYX().Norm() <= max_rotation_)) {
-    incremental_estimate_ = pose_update; //gu::PoseUpdate(incremental_estimate_, pose_update);
-  } else {
-    ROS_WARN(
-        " %s: Discarding incremental transformation with norm (t: %lf, r: %lf)",
-        name_.c_str(), pose_update.translation.Norm(),
-        pose_update.rotation.ToEulerZYX().Norm());
+    gu::Transform3 pose_update;
+    pose_update.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
+    pose_update.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
+                                    T(1, 0), T(1, 1), T(1, 2),
+                                    T(2, 0), T(2, 1), T(2, 2));
+
+
+    // Only update if the transform is small enough.
+    if (!transform_thresholding_ ||
+        (pose_update.translation.Norm() <= max_translation_ &&
+         pose_update.rotation.ToEulerZYX().Norm() <= max_rotation_)) {
+      incremental_estimate_ = gu::PoseUpdate(incremental_estimate_, pose_update);
+    } else {
+      ROS_WARN(
+          " %s: Discarding incremental transformation with norm (t: %lf, r: %lf)",
+          name_.c_str(), pose_update.translation.Norm(),
+          pose_update.rotation.ToEulerZYX().Norm());
+    }
+
+    //prev_integrated_estimate_ = integrated_estimate_;
+    integrated_estimate_ = gu::PoseUpdate(rough_integrated_estimate_, incremental_estimate_);
+  }else{
+    ROS_WARN("Motion update ICP did not converge");
+    integrated_estimate_ = rough_integrated_estimate_;
   }
-
-  prev_integrated_estimate_ = integrated_estimate_;
-
-  integrated_estimate_ =
-      gu::PoseUpdate(integrated_estimate_, incremental_estimate_);
-
 
   return true;
 }
