@@ -5,7 +5,7 @@ localization:
 
   # During ICP, two points won't be considered a correspondence if they are
   # at least this far from one another.
-  corr_dist: 2.0
+  corr_dist: 1.0
 
   # Iterate ICP this many times.
   iterations: 10
@@ -14,3 +14,4 @@ localization:
   transform_thresholding: false
   max_translation: 0.05
   max_rotation: 0.1
+  icp_threshold: 0.08

@@ -29,3 +29,6 @@ filtering:
   # If this number of neighbors are not found within a radius of a point, remove
   # the point.
   radius_knn: 3
+
+  range_filter: true
+  lowest_height: -0.2

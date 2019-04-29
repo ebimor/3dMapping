@@ -42,6 +42,8 @@
 #include <pcl/filters/random_sample.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/conditional_removal.h>
+
 
 namespace pu = parameter_utils;
 
@@ -80,6 +82,9 @@ bool PointCloudFilter::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("filtering/radius_filter", params_.radius_filter)) return false;
   if (!pu::Get("filtering/radius", params_.radius)) return false;
   if (!pu::Get("filtering/radius_knn", params_.radius_knn)) return false;
+
+  if (!pu::Get("filtering/range_filter", params_.grid_filter)) return false;
+  if (!pu::Get("filtering/lowest_height", params_.grid_res)) return false;
 
   // Cap to [0.0, 1.0].
   params_.decimate_percentage =
@@ -140,6 +145,23 @@ bool PointCloudFilter::Filter(const PointCloud::ConstPtr& points,
     rad.setRadiusSearch(params_.radius);
     rad.setMinNeighborsInRadius(params_.radius_knn);
     rad.filter(*points_filtered);
+  }
+
+  //remove all points too close to the robot
+  if(params_.range_filter){
+    pcl::ConditionAnd<pcl::PointXYZ>::Ptr range_cond (new
+                    pcl::ConditionAnd<pcl::PointXYZ> ());
+    range_cond->addComparison (pcl::FieldComparison<pcl::PointXYZ>::ConstPtr (new
+        pcl::FieldComparison<pcl::PointXYZ> ("z", pcl::ComparisonOps::GT, -0.2)));
+    //range_cond->addComparison (pcl::FieldComparison<pcl::PointXYZ>::ConstPtr (new
+    //    pcl::FieldComparison<pcl::PointXYZ> ("z", pcl::ComparisonOps::LT, 0.8)));
+
+    // build the filter
+    pcl::ConditionalRemoval<pcl::PointXYZ> condrem;
+    condrem.setCondition (range_cond);
+    condrem.setInputCloud (points_filtered);
+    condrem.setKeepOrganized (true);
+    condrem.filter (*points_filtered);
   }
 
   return true;

@@ -72,7 +72,8 @@ public:
   // Output the query scan aligned in the localization frame.
   bool MeasurementUpdate(const PointCloud::Ptr& query,
                          const PointCloud::Ptr& reference,
-                         PointCloud* aligned_query);
+                         PointCloud* aligned_query,
+                         bool debug);
 
   // Get pose estimates.
   const geometry_utils::Transform3& GetIncrementalEstimate() const;
@@ -147,6 +148,8 @@ private:
   bool transform_thresholding_;
   double max_translation_;
   double max_rotation_;
+  double icp_threshold_;
+  double icp_iterations_;
 };
 
 #endif

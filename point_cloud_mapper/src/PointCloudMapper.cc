@@ -132,7 +132,7 @@ bool PointCloudMapper::InsertPoints(const PointCloud::ConstPtr& points,
     for (size_t ii = 0; ii < points->points.size(); ++ii) {
       const pcl::PointXYZ p = points->points[ii];
 
-      if (!map_octree_->isVoxelOccupiedAtPoint(p) && p.z > height_of_points_) {
+      if (!map_octree_->isVoxelOccupiedAtPoint(p)) {
         map_octree_->addPointToCloud(p, map_data_);
         incremental_points->push_back(p);
       }

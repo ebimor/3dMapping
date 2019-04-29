@@ -96,7 +96,7 @@ private:
   ros::Subscriber pcld_sub_;
 
   // Publishers
-  ros::Publisher base_frame_pcld_pub_;
+  ros::Publisher base_frame_pcld_pub_, neighbors_pcld_pub_;
 
   // Names of coordinate frames.
   std::string fixed_frame_id_;

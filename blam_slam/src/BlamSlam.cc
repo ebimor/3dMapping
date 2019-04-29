@@ -163,6 +163,9 @@ bool BlamSlam::CreatePublishers(const ros::NodeHandle& n) {
   base_frame_pcld_pub_ =
       nl.advertise<PointCloud>("base_frame_point_cloud", 10, false);
 
+  neighbors_pcld_pub_ =
+      nl.advertise<PointCloud>("neighbors_point_cloud", 10, false);
+
   return true;
 }
 
@@ -235,8 +238,9 @@ if (first_time) {
 
 
   // Containers.
-  //PointCloud::Ptr msg_transformed(new PointCloud);
-  //PointCloud::Ptr msg_neighbors(new PointCloud);
+  PointCloud::Ptr msg_transformed(new PointCloud);
+  PointCloud::Ptr msg_neighbors(new PointCloud);
+  PointCloud::Ptr msg_neighbors_fixed(new PointCloud);
   PointCloud::Ptr msg_base(new PointCloud);
   PointCloud::Ptr msg_fixed(new PointCloud);
 
@@ -268,7 +272,17 @@ if (first_time) {
    mapper_.InsertPoints(msg_fixed, unused.get());
 */
 
-  localization_.MeasurementUpdate(msg_filtered, prev_key_frame_pcld, msg_base.get());
+  localization_.MeasurementUpdate(msg_filtered, prev_key_frame_pcld, msg_base.get(), false);
+
+  localization_.TransformPointsToFixedFrame(*msg_filtered,
+                                            msg_transformed.get());
+  mapper_.ApproxNearestNeighbors(*msg_transformed, msg_neighbors.get());
+  localization_.TransformPointsToSensorFrame(*msg_neighbors, msg_neighbors_fixed.get());
+
+  bool measurment_is_refined = true;
+  localization_.MeasurementUpdate(msg_filtered, msg_neighbors_fixed, msg_base.get(), true);
+  ROS_INFO_STREAM("input pointcloud is of size: "<<msg_filtered->points.size()<<" and number of nearest points found in the map are: "<< msg_neighbors_fixed->points.size());
+
 
   // Check for new loop closures.
   bool new_keyframe;
@@ -283,7 +297,8 @@ if (first_time) {
 
     mapper_.Reset();
     PointCloud::Ptr unused(new PointCloud);
-    mapper_.InsertPoints(regenerated_map, unused.get());
+    if(measurment_is_refined)
+      mapper_.InsertPoints(regenerated_map, unused.get());
 
     // Also reset the robot's estimated position.
     localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
@@ -298,7 +313,8 @@ if (first_time) {
 
       localization_.TransformPointsToFixedFrame(*msg, msg_fixed.get());
       PointCloud::Ptr unused(new PointCloud);
-      mapper_.InsertPoints(msg_fixed, unused.get());
+      if(measurment_is_refined)
+        mapper_.InsertPoints(msg_fixed, unused.get());
     }
   }
 
@@ -306,10 +322,13 @@ if (first_time) {
   loop_closure_.PublishPoseGraph();
 
   // Publish the incoming point cloud message from the base frame.
-  if (base_frame_pcld_pub_.getNumSubscribers() != 0) {
+  if (base_frame_pcld_pub_.getNumSubscribers() != 0 || neighbors_pcld_pub_.getNumSubscribers() !=0) {
     PointCloud base_frame_pcld = *msg;
+    PointCloud neighbors_pcld = *msg_neighbors_fixed;
     base_frame_pcld.header.frame_id = base_frame_id_;
+    neighbors_pcld.header.frame_id = base_frame_id_;
     base_frame_pcld_pub_.publish(base_frame_pcld);
+    neighbors_pcld_pub_.publish(neighbors_pcld);
   }
 }
 

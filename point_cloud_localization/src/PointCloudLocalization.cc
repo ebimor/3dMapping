@@ -138,6 +138,8 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("localization/max_translation", max_translation_)) return false;
   if (!pu::Get("localization/max_rotation", max_rotation_)) return false;
+  if (!pu::Get("localization/icp_threshold", icp_threshold_)) return false;
+
 
   return true;
 }
@@ -239,7 +241,7 @@ bool PointCloudLocalization::TransformPointsToFixedFrame(
 
   // Compose the current incremental estimate (from odometry) with the
   // integrated estimate, and transform the incoming point cloud.
-  const gu::Transform3 estimate = rough_integrated_estimate_;
+  const gu::Transform3 estimate = integrated_estimate_;
   //gu::PoseUpdate(integrated_estimate_, incremental_estimate_);
   const Eigen::Matrix<double, 3, 3> R = estimate.rotation.Eigen();
   const Eigen::Matrix<double, 3, 1> T = estimate.translation.Eigen();
@@ -262,7 +264,7 @@ bool PointCloudLocalization::TransformPointsToSensorFrame(
 
   // Compose the current incremental estimate (from odometry) with the
   // integrated estimate, then invert to go from world to sensor frame.
-  const gu::Transform3 estimate = gu::PoseInverse(rough_integrated_estimate_);
+  const gu::Transform3 estimate = gu::PoseInverse(integrated_estimate_);
     //gu::PoseUpdate(integrated_estimate_, incremental_estimate_));
   const Eigen::Matrix<double, 3, 3> R = estimate.rotation.Eigen();
   const Eigen::Matrix<double, 3, 1> T = estimate.translation.Eigen();
@@ -278,7 +280,8 @@ bool PointCloudLocalization::TransformPointsToSensorFrame(
 
 bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
                                                const PointCloud::Ptr& reference,
-                                               PointCloud* aligned_query) {
+                                               PointCloud* aligned_query,
+                                               bool debug) {
   if (aligned_query == NULL) {
     ROS_ERROR("%s: Output is null.", name_.c_str());
     return false;
@@ -307,7 +310,7 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   icp.setMaxCorrespondenceDistance(params_.corr_dist);
   icp.setMaximumIterations(params_.iterations);
   icp.setRANSACIterations(0);
-  icp.setMaximumOptimizerIterations(50); // default 20
+  icp.setMaximumOptimizerIterations(100); // default 20
 
   icp.setInputSource(query);
   icp.setInputTarget(reference);
@@ -328,9 +331,10 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   //PointCloud unused;
   icp.align(*aligned_query);
 
- ROS_INFO_STREAM("has converged:" << icp.hasConverged() << " score: " << icp.getFitnessScore());
+ if(debug)
+    ROS_INFO_STREAM("has converged:" << icp.hasConverged() << " score: " << icp.getFitnessScore());
 
- if(icp.getFitnessScore() < 1 && icp.hasConverged()){
+ if(icp.getFitnessScore() < icp_threshold_ && icp.hasConverged()){
     // Retrieve transformation and estimate and update.
     const Eigen::Matrix4f T = icp.getFinalTransformation(); //*tff_float;
     //pcl::transformPointCloud(*query, *aligned_query, T);
@@ -358,8 +362,11 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
     //prev_integrated_estimate_ = integrated_estimate_;
     integrated_estimate_ = gu::PoseUpdate(rough_integrated_estimate_, incremental_estimate_);
   }else{
-    ROS_WARN("Motion update ICP did not converge");
+    if(debug)
+      ROS_WARN("Motion update ICP did not converge");
     integrated_estimate_ = rough_integrated_estimate_;
+
+    return false;
   }
 
   return true;

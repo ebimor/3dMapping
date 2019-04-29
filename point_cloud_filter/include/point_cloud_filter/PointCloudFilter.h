@@ -93,6 +93,10 @@ private:
     // Size of the radius filter.
     double radius;
 
+    bool range_filter;
+
+    double lowest_height;
+
     // If this number of neighbors are not found within a radius around each
     // point, remove that point.
     unsigned int radius_knn;
