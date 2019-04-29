@@ -46,6 +46,9 @@
     </node>
   </group>
 
-  <node pkg="rosbag" type="play" name="player" output="screen" args="--clock /home/eshahrivar/Desktop/husky_rosbag.bag"/>
+  <node pkg="rosbag" type="play" name="player" args="--clock /home/eshahrivar/Desktop/husky_rosbag.bag"/>
+
+  <node name="rviz" pkg="rviz" type="rviz" /> <!-- args="-d $(find cpr_gps_navigation_client)/rviz/jackal_test.rviz" /-->
+
 
 </launch>

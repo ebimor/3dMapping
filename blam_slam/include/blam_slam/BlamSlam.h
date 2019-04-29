@@ -109,6 +109,8 @@ private:
   LaserLoopClosure loop_closure_;
   PointCloudLocalization localization_;
   PointCloudMapper mapper_;
+
+  PointCloud::Ptr prev_key_frame_pcld;
 };
 
 #endif

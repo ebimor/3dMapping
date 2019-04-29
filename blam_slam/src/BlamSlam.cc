@@ -41,6 +41,9 @@
 
 #include <gtsam/base/Vector.h>
 
+using pcl::copyPointCloud;
+using pcl::PointCloud;
+using pcl::PointXYZ;
 
 namespace pu = parameter_utils;
 namespace gu = geometry_utils;
@@ -54,6 +57,8 @@ bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
   name_ = ros::names::append(n.getNamespace(), "BlamSlam");
 
   first_time = true;
+  prev_key_frame_pcld.reset(new PointCloud);
+
 
   if (!filter_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize point cloud filter.", name_.c_str());
@@ -223,14 +228,15 @@ if (first_time) {
   PointCloud::Ptr unused(new PointCloud);
   mapper_.InsertPoints(msg_filtered, unused.get());
   loop_closure_.AddKeyScanPair(0, msg);
+  copyPointCloud(*msg_filtered, *prev_key_frame_pcld);
   first_time = false;
   return;
 }
 
 
   // Containers.
-  PointCloud::Ptr msg_transformed(new PointCloud);
-  PointCloud::Ptr msg_neighbors(new PointCloud);
+  //PointCloud::Ptr msg_transformed(new PointCloud);
+  //PointCloud::Ptr msg_neighbors(new PointCloud);
   PointCloud::Ptr msg_base(new PointCloud);
   PointCloud::Ptr msg_fixed(new PointCloud);
 
@@ -239,14 +245,16 @@ if (first_time) {
   // Transform the incoming point cloud to the best estimate of the base frame.
   localization_.MotionUpdate(msg_filtered);
 
-  localization_.TransformPointsToFixedFrame(*msg_filtered,
-                                            msg_transformed.get());
+  //localization_.TransformPointsToFixedFrame(*msg_filtered,
+  //                                          msg_transformed.get());
 
   // Get approximate nearest neighbors from the map.
-  mapper_.ApproxNearestNeighbors(*msg_transformed, msg_neighbors.get());
+  //mapper_.ApproxNearestNeighbors(*msg_transformed, msg_neighbors.get());
+
+  //ROS_INFO_STREAM("input pointcloud is of size: "<<msg_filtered->points.size()<<" and number of nearest points found in the map are: "<< msg_neighbors->points.size());
 
   // Transform those nearest neighbors back into sensor frame to perform ICP.
-  localization_.TransformPointsToSensorFrame(*msg_neighbors, msg_neighbors.get());
+//  localization_.TransformPointsToSensorFrame(*msg_neighbors, msg_neighbors.get());
 
 /* This blocks can do a minimum job for creating a map
    //Localize to the map. Localization will output a pointcloud aligned in the
@@ -260,11 +268,13 @@ if (first_time) {
    mapper_.InsertPoints(msg_fixed, unused.get());
 */
 
-  localization_.MeasurementUpdate(msg_filtered, msg_neighbors, msg_base.get());
+  localization_.MeasurementUpdate(msg_filtered, prev_key_frame_pcld, msg_base.get());
 
   // Check for new loop closures.
   bool new_keyframe;
   if (HandleLoopClosures(msg, &new_keyframe)) {
+
+    copyPointCloud(*msg_filtered, *prev_key_frame_pcld);
 
     ROS_INFO("HandleLoopClosures is true");
     // We found one - regenerate the 3D map.
@@ -284,6 +294,8 @@ if (first_time) {
     if (new_keyframe) {
       //ROS_INFO("keyframe");
       //localization_.MotionUpdate(gu::Transform3::Identity());
+      copyPointCloud(*msg_filtered, *prev_key_frame_pcld);
+
       localization_.TransformPointsToFixedFrame(*msg, msg_fixed.get());
       PointCloud::Ptr unused(new PointCloud);
       mapper_.InsertPoints(msg_fixed, unused.get());
@@ -303,6 +315,9 @@ if (first_time) {
 
 bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
                                   bool* new_keyframe) {
+
+  //loop closure performs eveything in sensor frame
+
   if (new_keyframe == NULL) {
     ROS_ERROR("%s: Output boolean for new keyframe is null.", name_.c_str());
     return false;

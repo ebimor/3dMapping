@@ -42,6 +42,7 @@
 #include <Eigen/Dense>
 
 #include <pcl/registration/gicp.h>
+#include <pcl/registration/icp.h>
 
 namespace gu = geometry_utils;
 namespace gr = gu::ros;
@@ -126,12 +127,12 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
 
   integrated_estimate_.translation = gu::Vec3(init_x, init_y, init_z);
   integrated_estimate_.rotation = gu::Rot3(init_roll, init_pitch, init_yaw);
-
+*/
   // Load algorithm parameters.
   if (!pu::Get("localization/tf_epsilon", params_.tf_epsilon)) return false;
   if (!pu::Get("localization/corr_dist", params_.corr_dist)) return false;
   if (!pu::Get("localization/iterations", params_.iterations)) return false;
-*/
+
 
   if (!pu::Get("localization/transform_thresholding", transform_thresholding_))
     return false;
@@ -310,6 +311,19 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
 
   icp.setInputSource(query);
   icp.setInputTarget(reference);
+
+
+  /*
+  pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+  icp.setTransformationEpsilon(params_.tf_epsilon);
+  icp.setMaxCorrespondenceDistance(params_.corr_dist);
+  //icp.setMaximumIterations(params_.iterations);
+  icp.setRANSACOutlierRejectionThreshold(params_.corr_dist);
+  icp.setMaximumIterations(50); // default 20
+
+  icp.setInputCloud(query);
+  icp.setInputTarget(reference);
+  */
 
   //PointCloud unused;
   icp.align(*aligned_query);
