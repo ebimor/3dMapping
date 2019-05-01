@@ -34,11 +34,14 @@ link_directories(
   ${PCL_LIBRARY_DIRS}
 )
 
+
 add_library(${PROJECT_NAME} src/PointCloudFilter.cc)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
 )
+add_definitions(${PCL_DEFINITIONS})
+
 
 add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}.cc)
 target_link_libraries(${PROJECT_NAME}_node

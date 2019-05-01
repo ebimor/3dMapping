@@ -272,7 +272,8 @@ if (first_time) {
    mapper_.InsertPoints(msg_fixed, unused.get());
 */
 
-  localization_.MeasurementUpdate(msg_filtered, prev_key_frame_pcld, msg_base.get(), false);
+  //
+  //localization_.MeasurementUpdate(msg_filtered, prev_key_frame_pcld, msg_base.get(), false);
 
   localization_.TransformPointsToFixedFrame(*msg_filtered,
                                             msg_transformed.get());
@@ -336,7 +337,6 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
                                   bool* new_keyframe) {
 
   //loop closure performs eveything in sensor frame
-
   if (new_keyframe == NULL) {
     ROS_ERROR("%s: Output boolean for new keyframe is null.", name_.c_str());
     return false;

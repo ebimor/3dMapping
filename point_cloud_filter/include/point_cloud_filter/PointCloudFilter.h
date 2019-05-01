@@ -55,6 +55,8 @@ public:
   bool Filter(const PointCloud::ConstPtr& points,
               PointCloud::Ptr points_filtered) const;
 
+  int test();
+
 private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);

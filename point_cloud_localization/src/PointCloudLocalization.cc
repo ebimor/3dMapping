@@ -229,6 +229,8 @@ bool PointCloudLocalization::MotionUpdate(
     incremental_estimate_ = gu::Transform3::Identity();
   }
 
+  refined_estimate = false;
+
   return true;
 }
 
@@ -241,7 +243,7 @@ bool PointCloudLocalization::TransformPointsToFixedFrame(
 
   // Compose the current incremental estimate (from odometry) with the
   // integrated estimate, and transform the incoming point cloud.
-  const gu::Transform3 estimate = integrated_estimate_;
+  const gu::Transform3 estimate = refined_estimate? integrated_estimate_: rough_integrated_estimate_;
   //gu::PoseUpdate(integrated_estimate_, incremental_estimate_);
   const Eigen::Matrix<double, 3, 3> R = estimate.rotation.Eigen();
   const Eigen::Matrix<double, 3, 1> T = estimate.translation.Eigen();
@@ -264,7 +266,7 @@ bool PointCloudLocalization::TransformPointsToSensorFrame(
 
   // Compose the current incremental estimate (from odometry) with the
   // integrated estimate, then invert to go from world to sensor frame.
-  const gu::Transform3 estimate = gu::PoseInverse(integrated_estimate_);
+  const gu::Transform3 estimate = refined_estimate? gu::PoseInverse(integrated_estimate_): gu::PoseInverse(rough_integrated_estimate_);
     //gu::PoseUpdate(integrated_estimate_, incremental_estimate_));
   const Eigen::Matrix<double, 3, 3> R = estimate.rotation.Eigen();
   const Eigen::Matrix<double, 3, 1> T = estimate.translation.Eigen();
@@ -369,6 +371,8 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
     return false;
   }
 
+  refined_estimate = true;
+  
   return true;
 }
 

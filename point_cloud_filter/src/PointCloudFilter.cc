@@ -44,7 +44,6 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/conditional_removal.h>
 
-
 namespace pu = parameter_utils;
 
 PointCloudFilter::PointCloudFilter() {}
@@ -147,22 +146,6 @@ bool PointCloudFilter::Filter(const PointCloud::ConstPtr& points,
     rad.filter(*points_filtered);
   }
 
-  //remove all points too close to the robot
-  if(params_.range_filter){
-    pcl::ConditionAnd<pcl::PointXYZ>::Ptr range_cond (new
-                    pcl::ConditionAnd<pcl::PointXYZ> ());
-    range_cond->addComparison (pcl::FieldComparison<pcl::PointXYZ>::ConstPtr (new
-        pcl::FieldComparison<pcl::PointXYZ> ("z", pcl::ComparisonOps::GT, -0.2)));
-    //range_cond->addComparison (pcl::FieldComparison<pcl::PointXYZ>::ConstPtr (new
-    //    pcl::FieldComparison<pcl::PointXYZ> ("z", pcl::ComparisonOps::LT, 0.8)));
-
-    // build the filter
-    pcl::ConditionalRemoval<pcl::PointXYZ> condrem;
-    condrem.setCondition (range_cond);
-    condrem.setInputCloud (points_filtered);
-    condrem.setKeepOrganized (true);
-    condrem.filter (*points_filtered);
-  }
 
   return true;
 }

@@ -125,6 +125,7 @@ private:
   tf2_ros::TransformBroadcaster tfbr_;
   tf::TransformListener listener;
   tf::StampedTransform newTransform;
+  bool refined_estimate;
 
 
 
