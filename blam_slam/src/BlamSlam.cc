@@ -273,17 +273,7 @@ if (first_time) {
 */
 
   //
-  //localization_.MeasurementUpdate(msg_filtered, prev_key_frame_pcld, msg_base.get(), false);
-
-  localization_.TransformPointsToFixedFrame(*msg_filtered,
-                                            msg_transformed.get());
-  mapper_.ApproxNearestNeighbors(*msg_transformed, msg_neighbors.get());
-  localization_.TransformPointsToSensorFrame(*msg_neighbors, msg_neighbors_fixed.get());
-
-  bool measurment_is_refined = true;
-  localization_.MeasurementUpdate(msg_filtered, msg_neighbors_fixed, msg_base.get(), true);
-  ROS_INFO_STREAM("input pointcloud is of size: "<<msg_filtered->points.size()<<" and number of nearest points found in the map are: "<< msg_neighbors_fixed->points.size());
-
+  localization_.MeasurementUpdate(msg_filtered, prev_key_frame_pcld, msg_base.get(), false);
 
   // Check for new loop closures.
   bool new_keyframe;
@@ -298,8 +288,7 @@ if (first_time) {
 
     mapper_.Reset();
     PointCloud::Ptr unused(new PointCloud);
-    if(measurment_is_refined)
-      mapper_.InsertPoints(regenerated_map, unused.get());
+    mapper_.InsertPoints(regenerated_map, unused.get());
 
     // Also reset the robot's estimated position.
     localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
@@ -312,10 +301,16 @@ if (first_time) {
       //localization_.MotionUpdate(gu::Transform3::Identity());
       copyPointCloud(*msg_filtered, *prev_key_frame_pcld);
 
-      localization_.TransformPointsToFixedFrame(*msg, msg_fixed.get());
+      localization_.TransformPointsToFixedFrame(*msg_filtered,
+                                                msg_transformed.get());
+      mapper_.ApproxNearestNeighbors(*msg_transformed, msg_neighbors.get());
+      localization_.TransformPointsToSensorFrame(*msg_neighbors, msg_neighbors_fixed.get());
+
+      localization_.MeasurementUpdate(msg_filtered, msg_neighbors_fixed, msg_base.get(), true);
+
+      localization_.TransformPointsToFixedFrame(*msg_filtered, msg_fixed.get());
       PointCloud::Ptr unused(new PointCloud);
-      if(measurment_is_refined)
-        mapper_.InsertPoints(msg_fixed, unused.get());
+      mapper_.InsertPoints(msg_fixed, unused.get());
     }
   }
 
