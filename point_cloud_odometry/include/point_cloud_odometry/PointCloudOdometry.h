@@ -54,7 +54,7 @@ class PointCloudOdometry {
   bool Initialize(const ros::NodeHandle& n);
 
   // Align incoming point cloud with previous point cloud, updating odometry.
-  bool UpdateEstimate(const PointCloud& points);
+  bool UpdateEstimate(const PointCloud& points, geometry_utils::Transform3 roughTransform);
 
   // Get pose estimates.
   const geometry_utils::Transform3& GetIncrementalEstimate() const;
@@ -70,7 +70,7 @@ class PointCloudOdometry {
   bool RegisterCallbacks(const ros::NodeHandle& n);
 
   // Use ICP between a query and reference point cloud to estimate pose.
-  bool UpdateICP();
+  bool UpdateICP(geometry_utils::Transform3 roughTransform);
 
   // Publish reference and query point clouds.
   void PublishPoints(const PointCloud::Ptr& points,

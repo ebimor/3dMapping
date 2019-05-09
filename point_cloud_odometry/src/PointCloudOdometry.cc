@@ -122,25 +122,37 @@ bool PointCloudOdometry::RegisterCallbacks(const ros::NodeHandle& n) {
   return true;
 }
 
-bool PointCloudOdometry::UpdateEstimate(const PointCloud& points) {
+bool PointCloudOdometry::UpdateEstimate(const PointCloud& points_raw, gu::Transform3 roughTransform) {
   // Store input point cloud's time stamp for publishing.
-  stamp_.fromNSec(points.header.stamp*1e3);
+  stamp_.fromNSec(points_raw.header.stamp*1e3);
+
+  //we will align the reference point using the roughtranform first
+  const Eigen::Matrix<double, 3, 3> R = roughTransform.rotation.Eigen();
+  const Eigen::Matrix<double, 3, 1> T = roughTransform.translation.Eigen();
+
+  Eigen::Matrix4d tf;
+  tf.block(0, 0, 3, 3) = R;
+  tf.block(0, 3, 3, 1) = T;
+
+  PointCloud::Ptr points (new PointCloud ());
+
+  pcl::transformPointCloud(points_raw, *points, tf);
 
   // If this is the first point cloud, store it and wait for another.
   if (!initialized_) {
-    copyPointCloud(points, *query_);
+    copyPointCloud(*points, *query_);
     initialized_ = true;
     return false;
-  }
+  }  
 
   // Move current query points (acquired last iteration) to reference points.
   copyPointCloud(*query_, *reference_);
 
   // Set the incoming point cloud as the query point cloud.
-  copyPointCloud(points, *query_);
+  copyPointCloud(*points, *query_);
 
   // Update pose estimate via ICP.
-  return UpdateICP();
+  return UpdateICP(roughTransform);
 }
 
 const gu::Transform3& PointCloudOdometry::GetIncrementalEstimate() const {
@@ -161,7 +173,8 @@ bool PointCloudOdometry::GetLastPointCloud(PointCloud::Ptr& out) const {
   return true;
 }
 
-bool PointCloudOdometry::UpdateICP() {
+bool PointCloudOdometry::UpdateICP(gu::Transform3 roughTransform) {
+  
   // Compute the incremental transformation.
   GeneralizedIterativeClosestPoint<PointXYZ, PointXYZ> icp;
   icp.setTransformationEpsilon(params_.icp_tf_epsilon);
@@ -177,11 +190,16 @@ bool PointCloudOdometry::UpdateICP() {
 
   const Eigen::Matrix4f T = icp.getFinalTransformation();
 
-  // Update pose estimates.
-  incremental_estimate_.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
-  incremental_estimate_.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
+  // Fine estimates.
+  gu::Transform3 fine_estimate;
+  fine_estimate.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
+  fine_estimate.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
                                             T(1, 0), T(1, 1), T(1, 2),
                                             T(2, 0), T(2, 1), T(2, 2));
+
+  incremental_estimate_ = gu::PoseUpdate(roughTransform, fine_estimate);
+
+
 
   // Only update if the incremental transform is small enough.
   if (!transform_thresholding_ ||

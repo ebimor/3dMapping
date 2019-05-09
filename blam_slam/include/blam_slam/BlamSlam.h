@@ -45,6 +45,8 @@
 #include <point_cloud_localization/PointCloudLocalization.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 #include <pcl_ros/point_cloud.h>
+#include <geometry_utils/Transform3.h>
+
 
 class BlamSlam {
  public:
@@ -59,7 +61,7 @@ class BlamSlam {
   bool Initialize(const ros::NodeHandle& n, bool from_log);
 
   // Sensor message processing.
-  void ProcessPointCloudMessage(const PointCloud::ConstPtr& msg);
+  void ProcessPointCloudMessage(const PointCloud::ConstPtr& msg, geometry_utils::Transform3 roughTransform);
 
  private:
   // Node initialization.

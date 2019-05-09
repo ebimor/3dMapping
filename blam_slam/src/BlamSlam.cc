@@ -35,7 +35,6 @@
  */
 
 #include <blam_slam/BlamSlam.h>
-#include <geometry_utils/Transform3.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl_conversions/pcl_conversions.h>
 
@@ -165,7 +164,9 @@ void BlamSlam::EstimateTimerCallback(const ros::TimerEvent& ev) {
         const MeasurementSynchronizer::Message<PointCloud>::ConstPtr& m =
             synchronizer_.GetPCLPointCloudMessage(index);
 
-        ProcessPointCloudMessage(m->msg);
+        gu::Transform3 roughTransform = gu::Transform3::Identity();
+
+        ProcessPointCloudMessage(m->msg, roughTransform);
         break;
       }
 
@@ -186,14 +187,14 @@ void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {
   mapper_.PublishMap();
 }
 
-void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
+void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg, gu::Transform3 roughTransform) {
   // Filter the incoming point cloud message.
 
   PointCloud::Ptr msg_filtered(new PointCloud);
   filter_.Filter(msg, msg_filtered);
 
   // Update odometry by performing ICP.
-  if (!odometry_.UpdateEstimate(*msg_filtered)) {
+  if (!odometry_.UpdateEstimate(*msg_filtered, roughTransform)) {
     // First update ever.
     PointCloud::Ptr unused(new PointCloud);
     mapper_.InsertPoints(msg_filtered, unused.get());

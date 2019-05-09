@@ -269,7 +269,9 @@ class BlamSlamOffline {
               BlamSlam::PointCloud>::ConstPtr& m =
               synchronizer_.GetPCLPointCloudMessage(index);
 
-          slam_.ProcessPointCloudMessage(m->msg);
+              gu::Transform3 roughTransform = gu::Transform3::Identity();
+
+          slam_.ProcessPointCloudMessage(m->msg, roughTransform);
           scan_pub_.publish(m->msg);
 
           ROS_INFO_STREAM("Finished processing point "<<count);
