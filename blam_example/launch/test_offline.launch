@@ -48,4 +48,7 @@
     </node>
   </group>
 
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cpr_gps_navigation_client)/rviz/RVIZ_CONFIG.rviz" />
+
+
 </launch>

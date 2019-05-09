@@ -56,6 +56,8 @@
 #include <rosgraph_msgs/Clock.h>
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/common/transforms.h>
 
 #include <tf/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -70,6 +72,9 @@ class BlamSlamOffline {
  public:
   BlamSlamOffline() {}
   ~BlamSlamOffline() {}
+
+  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+
 
   bool Initialize(const ros::NodeHandle& n) {
     name_ = ros::names::append(n.getNamespace(), "BlamSlamOffline");
@@ -191,8 +196,8 @@ class BlamSlamOffline {
 
     BOOST_FOREACH(rosbag::MessageInstance const m, view) {
       if (!m.getTopic().compare(scan_topic_)) {
-        BlamSlam::PointCloud::ConstPtr msg =
-            m.instantiate<BlamSlam::PointCloud>();
+        PointCloud::ConstPtr msg =
+            m.instantiate<PointCloud>();
 
         if (msg != NULL && map_received && odom_received){
           map_to_baselink = PoseUpdate(map_to_odom, odom_to_baselink);
@@ -203,10 +208,12 @@ class BlamSlamOffline {
           tf.block(0, 0, 3, 3) = R;
           tf.block(0, 3, 3, 1) = T;
 
-          PointCloud::Ptr msg_transformed(new PointCloud);
+          PointCloud::Ptr source_cloud (new PointCloud ());
+          *source_cloud = *msg;
+          PointCloud::Ptr transformed_cloud (new PointCloud ());
 
-          pcl::transformPointCloud(msg, msg_transformed.get(), tf);
-          synchronizer_.AddPCLPointCloudMessage(msg_transformed);
+          pcl::transformPointCloud(*source_cloud, *transformed_cloud, tf);
+          synchronizer_.AddPCLPointCloudMessage(transformed_cloud);
           count++;
         }
         ROS_INFO_STREAM("PCL number: "<<count);
@@ -218,7 +225,6 @@ class BlamSlamOffline {
         if (cur_tf != NULL) {
           for (size_t i = 0; i < cur_tf->transforms.size(); ++i)
           {
-
             std::string frame = cur_tf->transforms[i].header.frame_id;
             if(frame == std::string("map")){
               latest_map_transform = cur_tf->transforms[i];
