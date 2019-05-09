@@ -189,10 +189,11 @@ class BlamSlamOffline {
     int count = 0;
 
     geometry_msgs::TransformStamped latest_map_transform, latest_odom_transform;
-    geometry_utils::Transform3 map_to_odom, odom_to_baselink, map_to_baselink;
+    geometry_utils::Transform3 map_to_odom, odom_to_baselink, map_to_baselink_curr, map_to_baselink_prev, roughTransform;
 
     bool map_received = false;
     bool odom_received = false;
+    bool first_time = true;
 
     BOOST_FOREACH(rosbag::MessageInstance const m, view) {
       if (!m.getTopic().compare(scan_topic_)) {
@@ -200,13 +201,22 @@ class BlamSlamOffline {
             m.instantiate<PointCloud>();
 
         if (msg != NULL && map_received && odom_received){
-          map_to_baselink = PoseUpdate(map_to_odom, odom_to_baselink);
-          const Eigen::Matrix<double, 3, 3> R = map_to_baselink.rotation.Eigen();
-          const Eigen::Matrix<double, 3, 1> T = map_to_baselink.translation.Eigen();
+
+          map_to_baselink_curr = PoseUpdate(map_to_odom, odom_to_baselink);
+          const Eigen::Matrix<double, 3, 3> R = map_to_baselink_curr.rotation.Eigen();
+          const Eigen::Matrix<double, 3, 1> T = map_to_baselink_curr.translation.Eigen();
 
           Eigen::Matrix4d tf;
           tf.block(0, 0, 3, 3) = R;
           tf.block(0, 3, 3, 1) = T;
+
+          if(first_time){
+            map_to_baselink_prev = map_to_baselink_curr;
+            first_time = false;
+          }
+
+          roughTransform = gu::PoseDelta(map_to_baselink_curr, map_to_baselink_prev);
+          map_to_baselink_prev = map_to_baselink_curr;
 
           PointCloud::Ptr source_cloud (new PointCloud ());
           *source_cloud = *msg;
