@@ -189,7 +189,7 @@ class BlamSlamOffline {
     int count = 0;
 
     geometry_msgs::TransformStamped latest_map_transform, latest_odom_transform;
-    geometry_utils::Transform3 map_to_odom, odom_to_baselink, map_to_baselink_curr, map_to_baselink_prev, roughTransform;
+    geometry_utils::Transform3 map_to_odom, odom_to_baselink, baselink_to_map_curr, baselink_to_map_prev, roughTransform;
 
     bool map_received = false;
     bool odom_received = false;
@@ -202,21 +202,26 @@ class BlamSlamOffline {
 
         if (msg != NULL && map_received && odom_received){
 
-          map_to_baselink_curr = PoseUpdate(map_to_odom, odom_to_baselink);
-          const Eigen::Matrix<double, 3, 3> R = map_to_baselink_curr.rotation.Eigen();
-          const Eigen::Matrix<double, 3, 1> T = map_to_baselink_curr.translation.Eigen();
+          //tf_monitor <source_frame> <target_target> gives target frame in source frame
+
+
+          baselink_to_map_curr = PoseInverse(PoseUpdate(map_to_odom, odom_to_baselink));
+          const Eigen::Matrix<double, 3, 3> R = baselink_to_map_curr.rotation.Eigen();
+          const Eigen::Matrix<double, 3, 1> T = baselink_to_map_curr.translation.Eigen();
 
           Eigen::Matrix4d tf;
           tf.block(0, 0, 3, 3) = R;
           tf.block(0, 3, 3, 1) = T;
 
+          std::cout<<"translation is: "<<T<<std::endl;
+
           if(first_time){
-            map_to_baselink_prev = map_to_baselink_curr;
+            baselink_to_map_prev = baselink_to_map_curr;
             first_time = false;
           }
 
-          roughTransform = gu::PoseDelta(map_to_baselink_curr, map_to_baselink_prev);
-          map_to_baselink_prev = map_to_baselink_curr;
+          roughTransform = gu::PoseDelta(baselink_to_map_curr, baselink_to_map_prev);
+          baselink_to_map_prev = baselink_to_map_curr;
 
           PointCloud::Ptr source_cloud (new PointCloud ());
           *source_cloud = *msg;
@@ -224,6 +229,7 @@ class BlamSlamOffline {
 
           pcl::transformPointCloud(*source_cloud, *transformed_cloud, tf);
           synchronizer_.AddPCLPointCloudMessage(transformed_cloud);
+          synchronizer_.AddTransformation(roughTransform);  //this transform is from the current cloud to the prevvious cloud
           count++;
         }
         ROS_INFO_STREAM("PCL number: "<<count);
@@ -279,7 +285,9 @@ class BlamSlamOffline {
               BlamSlam::PointCloud>::ConstPtr& m =
               synchronizer_.GetPCLPointCloudMessage(index);
 
-              gu::Transform3 roughTransform = gu::Transform3::Identity();
+              gu::Transform3 roughTransform = synchronizer_.GetTransformation(index);
+
+              //gu::Transform3 roughTransform = gu::Transform3::Identity();
 
           slam_.ProcessPointCloudMessage(m->msg, roughTransform);
           scan_pub_.publish(m->msg);

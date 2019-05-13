@@ -40,6 +40,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <pcl_ros/point_cloud.h>
+#include <geometry_utils/Transform3.h>
 
 #include <memory>
 #include <vector>
@@ -77,6 +78,8 @@ class MeasurementSynchronizer {
   typedef std::vector<Message<pcl::PointCloud<pcl::PointXYZ>>::ConstPtr>
       pcl_pcld_queue;
 
+  typedef std::vector<geometry_utils::Transform3> transformation_queue;
+
   // Methods for accessing entire queues of accumulated measurements.
   const pcld_queue& GetPointCloudMessages();
   const pcl_pcld_queue& GetPCLPointCloudMessages();
@@ -87,12 +90,16 @@ class MeasurementSynchronizer {
   const Message<pcl::PointCloud<pcl::PointXYZ>>::ConstPtr&
       GetPCLPointCloudMessage(unsigned int index);
 
+  const geometry_utils::Transform3 GetTransformation(unsigned int index);
+
   // Methods for adding sensor measurements of specific types.
   void AddPointCloudMessage(const sensor_msgs::PointCloud2::ConstPtr& msg,
                             const std::string& tag = std::string());
   void AddPCLPointCloudMessage(
       const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& msg,
       const std::string& tag = std::string());
+
+  void AddTransformation(const geometry_utils::Transform3 tf);
 
   // Static enum to string conversion.
   static std::string GetTypeString(const sensor_type& type) {
@@ -127,6 +134,7 @@ class MeasurementSynchronizer {
   // Queues of sensor messages.
   pcld_queue pending_pclds_;
   pcl_pcld_queue pending_pcl_pclds_;
+  transformation_queue rtk_gps_transformation_;
 
   unsigned int pending_index_;
   std::vector<TimestampedType::ConstPtr> sensor_ordering_;

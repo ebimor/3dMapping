@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   pcl_ros
+  geometry_utils
 )
 
 catkin_package(
@@ -14,6 +15,7 @@ catkin_package(
     roscpp
     sensor_msgs
     pcl_ros
+    geometry_utils
 )
 
 include(CheckCXXCompilerFlag)

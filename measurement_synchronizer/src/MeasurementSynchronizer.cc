@@ -93,6 +93,7 @@ bool MeasurementSynchronizer::NextMessageExists() {
 void MeasurementSynchronizer::ClearMessages() {
   pending_pclds_.clear();
   pending_pcl_pclds_.clear();
+  rtk_gps_transformation_.clear();
 }
 
 const MeasurementSynchronizer::pcld_queue&
@@ -130,3 +131,13 @@ void MeasurementSynchronizer::AddPCLPointCloudMessage(
       new Message<pcl::PointCloud<pcl::PointXYZ>>(msg, tag));
   pending_pcl_pclds_.push_back(p);
 }
+
+void MeasurementSynchronizer::AddTransformation(geometry_utils::Transform3 tf){
+  rtk_gps_transformation_.push_back(tf);
+}
+
+const geometry_utils::Transform3 MeasurementSynchronizer::GetTransformation(unsigned int index){
+  return rtk_gps_transformation_[index];
+}
+
+

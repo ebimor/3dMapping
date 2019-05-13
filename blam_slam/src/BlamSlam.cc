@@ -223,6 +223,10 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg, gu::Tra
   // sensor frame.
   localization_.MeasurementUpdate(msg_filtered, msg_neighbors, msg_base.get());
 
+  //debug
+  gu::Transform3 position = localization_.GetIntegratedEstimate();
+  std::cout<<position.translation.Eigen()<<std::endl;
+
   // Check for new loop closures.
   bool new_keyframe;
   if (HandleLoopClosures(msg, &new_keyframe)) {
