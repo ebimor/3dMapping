@@ -206,14 +206,6 @@ class BlamSlamOffline {
 
 
           baselink_to_map_curr = PoseInverse(PoseUpdate(map_to_odom, odom_to_baselink));
-          const Eigen::Matrix<double, 3, 3> R = baselink_to_map_curr.rotation.Eigen();
-          const Eigen::Matrix<double, 3, 1> T = baselink_to_map_curr.translation.Eigen();
-
-          Eigen::Matrix4d tf;
-          tf.block(0, 0, 3, 3) = R;
-          tf.block(0, 3, 3, 1) = T;
-
-          std::cout<<"translation is: "<<T<<std::endl;
 
           if(first_time){
             baselink_to_map_prev = baselink_to_map_curr;
@@ -223,12 +215,20 @@ class BlamSlamOffline {
           roughTransform = gu::PoseDelta(baselink_to_map_curr, baselink_to_map_prev);
           baselink_to_map_prev = baselink_to_map_curr;
 
-          PointCloud::Ptr source_cloud (new PointCloud ());
-          *source_cloud = *msg;
-          PointCloud::Ptr transformed_cloud (new PointCloud ());
+          //const Eigen::Matrix<double, 3, 3> R = roughTransform.rotation.Eigen();
+          //const Eigen::Matrix<double, 3, 1> T = roughTransform.translation.Eigen();
 
-          pcl::transformPointCloud(*source_cloud, *transformed_cloud, tf);
-          synchronizer_.AddPCLPointCloudMessage(transformed_cloud);
+          //Eigen::Matrix4d tf;
+          //tf.block(0, 0, 3, 3) = R;
+          //tf.block(0, 3, 3, 1) = T;
+
+          //PointCloud::Ptr source_cloud (new PointCloud ());
+          //*source_cloud = *msg;
+          //PointCloud::Ptr transformed_cloud (new PointCloud ());
+          //pcl::transformPointCloud(*source_cloud, *transformed_cloud, tf);
+
+
+          synchronizer_.AddPCLPointCloudMessage(msg); //transformed_cloud);
           synchronizer_.AddTransformation(roughTransform);  //this transform is from the current cloud to the prevvious cloud
           count++;
         }
