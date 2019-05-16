@@ -10,11 +10,11 @@
           output="screen">
 
       <!-- Bagfile parameters -->
-      <param name="filename/bag" value="/home/eshahrivar/Desktop/husky_rosbag.bag"/>
+      <param name="filename/bag" value="/home/eshahrivar/Desktop/ICRAHusky.bag"/>
       <param name="scan_topic" value="/velodyne_points"/>
 
       <param name="time_start" value="0.0"/>
-      <param name="time_end" value="45.0"/>
+      <param name="time_end" value="-1.0"/>
       <param name="time_scale" value="-1.0"/>
 
       <!-- Initial pose -->

@@ -203,30 +203,39 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   // Store time stamp.
   stamp_.fromNSec(query->header.stamp*1e3);
 
-  // ICP-based alignment. Generalized ICP does (roughly) plane-to-plane
-  // matching, and is much more robust than standard ICP.
-  GeneralizedIterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-  icp.setTransformationEpsilon(params_.tf_epsilon);
-  icp.setMaxCorrespondenceDistance(params_.corr_dist);
-  icp.setMaximumIterations(params_.iterations);
-  icp.setRANSACIterations(0);
-  icp.setMaximumOptimizerIterations(50); // default 20
-
-  icp.setInputSource(query);
-  icp.setInputTarget(reference);
-
-  PointCloud unused;
-  icp.align(unused);
-
-  // Retrieve transformation and estimate and update.
-  const Eigen::Matrix4f T = icp.getFinalTransformation();
-  pcl::transformPointCloud(*query, *aligned_query, T);
-
+  bool scan_localization = false;
   gu::Transform3 pose_update;
-  pose_update.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
-  pose_update.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
-                                  T(1, 0), T(1, 1), T(1, 2),
-                                  T(2, 0), T(2, 1), T(2, 2));
+
+  if(scan_localization){
+
+    // ICP-based alignment. Generalized ICP does (roughly) plane-to-plane
+    // matching, and is much more robust than standard ICP.
+    GeneralizedIterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+    icp.setTransformationEpsilon(params_.tf_epsilon);
+    icp.setMaxCorrespondenceDistance(params_.corr_dist);
+    icp.setMaximumIterations(params_.iterations);
+    icp.setRANSACIterations(0);
+    icp.setMaximumOptimizerIterations(50); // default 20
+
+    icp.setInputSource(query);
+    icp.setInputTarget(reference);
+
+    PointCloud unused;
+    icp.align(unused);
+
+    // Retrieve transformation and estimate and update.
+    const Eigen::Matrix4f T = icp.getFinalTransformation();
+    pcl::transformPointCloud(*query, *aligned_query, T);
+
+    pose_update.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
+    pose_update.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
+                                    T(1, 0), T(1, 1), T(1, 2),
+                                    T(2, 0), T(2, 1), T(2, 2));
+  }else{
+
+    pose_update = gu::Transform3::Identity();
+  
+  }
 
   // Only update if the transform is small enough.
   if (!transform_thresholding_ ||

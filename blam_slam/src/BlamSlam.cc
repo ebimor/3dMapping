@@ -225,7 +225,7 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg, gu::Tra
 
   //debug
   gu::Transform3 position = localization_.GetIntegratedEstimate();
-  std::cout<<position.translation.Eigen()<<std::endl;
+  std::cout<<"Localization Integrated estimate is: "<<position.translation.Eigen()<<std::endl;
 
   // Check for new loop closures.
   bool new_keyframe;

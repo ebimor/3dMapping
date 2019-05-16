@@ -205,18 +205,20 @@ class BlamSlamOffline {
           //tf_monitor <source_frame> <target_target> gives target frame in source frame
 
 
-          baselink_to_map_curr = PoseInverse(PoseUpdate(map_to_odom, odom_to_baselink));
+          baselink_to_map_curr = PoseUpdate(map_to_odom, odom_to_baselink);
 
           if(first_time){
             baselink_to_map_prev = baselink_to_map_curr;
             first_time = false;
           }
 
-          roughTransform = gu::PoseDelta(baselink_to_map_curr, baselink_to_map_prev);
+          roughTransform = gu::PoseDelta(baselink_to_map_prev, baselink_to_map_curr);
           baselink_to_map_prev = baselink_to_map_curr;
 
           //const Eigen::Matrix<double, 3, 3> R = roughTransform.rotation.Eigen();
-          //const Eigen::Matrix<double, 3, 1> T = roughTransform.translation.Eigen();
+          const Eigen::Matrix<double, 3, 1> T = baselink_to_map_curr.translation.Eigen();
+
+          //std::cout<<"baselink_to_map_curr is: "<<T<<std::endl;
 
           //Eigen::Matrix4d tf;
           //tf.block(0, 0, 3, 3) = R;

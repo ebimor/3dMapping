@@ -122,25 +122,14 @@ bool PointCloudOdometry::RegisterCallbacks(const ros::NodeHandle& n) {
   return true;
 }
 
-bool PointCloudOdometry::UpdateEstimate(const PointCloud& points_raw, gu::Transform3 roughTransform) {
+bool PointCloudOdometry::UpdateEstimate(const PointCloud& points, gu::Transform3 roughTransform) {
   // Store input point cloud's time stamp for publishing.
-  stamp_.fromNSec(points_raw.header.stamp*1e3);
+  stamp_.fromNSec(points.header.stamp*1e3);
 
-  //we will align the reference point using the roughtranform first
-  const Eigen::Matrix<double, 3, 3> R = roughTransform.rotation.Eigen();
-  const Eigen::Matrix<double, 3, 1> T = roughTransform.translation.Eigen();
-
-  Eigen::Matrix4d tf;
-  tf.block(0, 0, 3, 3) = R;
-  tf.block(0, 3, 3, 1) = T;
-
-  PointCloud::Ptr points (new PointCloud ());
-
-  pcl::transformPointCloud(points_raw, *points, tf);
 
   // If this is the first point cloud, store it and wait for another.
   if (!initialized_) {
-    copyPointCloud(*points, *query_);
+    copyPointCloud(points, *query_);
     initialized_ = true;
     return false;
   }  
@@ -149,7 +138,7 @@ bool PointCloudOdometry::UpdateEstimate(const PointCloud& points_raw, gu::Transf
   copyPointCloud(*query_, *reference_);
 
   // Set the incoming point cloud as the query point cloud.
-  copyPointCloud(*points, *query_);
+  copyPointCloud(points, *query_);
 
   // Update pose estimate via ICP.
   return UpdateICP(roughTransform);
@@ -174,31 +163,62 @@ bool PointCloudOdometry::GetLastPointCloud(PointCloud::Ptr& out) const {
 }
 
 bool PointCloudOdometry::UpdateICP(gu::Transform3 roughTransform) {
-  
-  // Compute the incremental transformation.
-  GeneralizedIterativeClosestPoint<PointXYZ, PointXYZ> icp;
-  icp.setTransformationEpsilon(params_.icp_tf_epsilon);
-  icp.setMaxCorrespondenceDistance(params_.icp_corr_dist);
-  icp.setMaximumIterations(params_.icp_iterations);
-  icp.setRANSACIterations(0);
 
-  icp.setInputSource(query_);
-  icp.setInputTarget(reference_);
 
-  PointCloud unused_result;
-  icp.align(unused_result);
-
-  const Eigen::Matrix4f T = icp.getFinalTransformation();
-
-  // Fine estimates.
+  bool scan_odometry = true;
   gu::Transform3 fine_estimate;
-  fine_estimate.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
-  fine_estimate.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
-                                            T(1, 0), T(1, 1), T(1, 2),
-                                            T(2, 0), T(2, 1), T(2, 2));
+
+
+  if(scan_odometry){
+      //we will align the reference point using the roughtranform first
+
+    const Eigen::Matrix<double, 3, 3> RR = roughTransform.rotation.Eigen();
+    const Eigen::Matrix<double, 3, 1> TT = roughTransform.translation.Eigen();
+
+    Eigen::Matrix4d tff;
+    tff.block(0, 0, 3, 3) = RR;
+    tff.block(0, 3, 3, 1) = TT;
+
+    std::cout<<"roughtranform is: "<<TT<<std::endl;
+
+    PointCloud::Ptr points_transformed (new PointCloud ());
+
+    pcl::transformPointCloud(*query_, *points_transformed, tff);
+
+    // Compute the incremental transformation.
+    GeneralizedIterativeClosestPoint<PointXYZ, PointXYZ> icp;
+    icp.setTransformationEpsilon(params_.icp_tf_epsilon);
+    icp.setMaxCorrespondenceDistance(params_.icp_corr_dist);
+    icp.setMaximumIterations(params_.icp_iterations);
+    icp.setRANSACIterations(0);
+    icp.setMaximumOptimizerIterations(50); // default 20
+
+    icp.setInputSource(points_transformed);
+    icp.setInputTarget(reference_);
+
+    PointCloud unused_result;
+    icp.align(unused_result);
+
+    const Eigen::Matrix4f T = icp.getFinalTransformation();
+
+    // Fine estimates.
+    fine_estimate.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
+    fine_estimate.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
+                                              T(1, 0), T(1, 1), T(1, 2),
+                                              T(2, 0), T(2, 1), T(2, 2));
+
+    std::cout<<"fine estimate is: "<<fine_estimate.translation.Eigen()<<std::endl;
+ }else{
+
+  //skip icp
+  fine_estimate = gu::Transform3::Identity();
+ 
+ }
 
   incremental_estimate_ = gu::PoseUpdate(roughTransform, fine_estimate);
 
+
+  std::cout<<"final incremental_estimate_ in odometry is: "<<incremental_estimate_.translation.Eigen()<<std::endl;
 
 
   // Only update if the incremental transform is small enough.
