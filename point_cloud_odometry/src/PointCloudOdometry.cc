@@ -42,6 +42,8 @@
 #include <sensor_msgs/PointCloud2.h>
 
 #include <pcl/registration/gicp.h>
+#include <pcl/features/normal_3d.h>
+
 
 namespace gu = geometry_utils;
 namespace gr = gu::ros;
@@ -190,7 +192,8 @@ bool PointCloudOdometry::UpdateICP(gu::Transform3 roughTransform) {
     icp.setTransformationEpsilon(params_.icp_tf_epsilon);
     icp.setMaxCorrespondenceDistance(params_.icp_corr_dist);
     icp.setMaximumIterations(params_.icp_iterations);
-    icp.setRANSACIterations(0);
+    icp.setRANSACIterations(10);
+    icp.setEuclideanFitnessEpsilon (1);
     icp.setMaximumOptimizerIterations(50); // default 20
 
     icp.setInputSource(points_transformed);
@@ -207,6 +210,10 @@ bool PointCloudOdometry::UpdateICP(gu::Transform3 roughTransform) {
                                               T(1, 0), T(1, 1), T(1, 2),
                                               T(2, 0), T(2, 1), T(2, 2));
 
+    if (incremental_estimate_.translation.Norm() > max_translation_/2 || incremental_estimate_.rotation.ToEulerZYX().Norm() > max_rotation_/2) {
+        fine_estimate = gu::Transform3::Identity();
+    } 
+
     std::cout<<"fine estimate is: "<<fine_estimate.translation.Eigen()<<std::endl;
  }else{
 
@@ -215,10 +222,10 @@ bool PointCloudOdometry::UpdateICP(gu::Transform3 roughTransform) {
  
  }
 
-  incremental_estimate_ = gu::PoseUpdate(roughTransform, fine_estimate);
+  incremental_estimate_ = gu::PoseUpdate(fine_estimate, roughTransform);
 
 
-  std::cout<<"final incremental_estimate_ in odometry is: "<<incremental_estimate_.translation.Eigen()<<std::endl;
+  //std::cout<<"final incremental_estimate_ in odometry is: "<<incremental_estimate_.translation.Eigen()<<std::endl;
 
 
   // Only update if the incremental transform is small enough.
